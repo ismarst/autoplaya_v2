@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - autoPlaya v2</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+
+        .animate-blob {
+            animation: blob 7s infinite;
+        }
+
+        @keyframes blob {
+            0% {
+                transform: scale(1);
+            }
+
+            33% {
+                transform: scale(1.1);
+            }
+
+            66% {
+                transform: scale(0.9);
+            }
+
+            100% {
+                transform: scale(1);
+            }
+        }
+    </style>
+</head>
+
+<body class="bg-slate-950 flex items-center justify-center min-h-screen p-4 overflow-hidden relative">
+    <!-- Decoración de fondo -->
+    <div
+        class="absolute top-0 -left-10 w-96 h-96 bg-blue-600 rounded-full mix-blend-multiply filter blur-[120px] opacity-10 animate-blob">
+    </div>
+    <div
+        class="absolute bottom-0 -right-10 w-96 h-96 bg-indigo-600 rounded-full mix-blend-multiply filter blur-[120px] opacity-10 animate-blob animation-delay-2000">
+    </div>
+
+    <div
+        class="bg-white/5 backdrop-blur-2xl p-10 rounded-[3rem] shadow-2xl w-full max-w-md border border-white/10 relative z-10">
+        <div class="text-center mb-10">
+            <div class="mb-6 -mx-10 bg-white py-6 flex justify-center items-center shadow-sm">
+                <img src="./img/logo.png" class="h-16 w-auto object-contain" alt="San Juan Automotores">
+            </div>
+            <h1 class="text-2xl font-black text-white tracking-tight uppercase">Acceso a la <span
+                    class="text-blue-500">Solución</span></h1>
+            <p class="text-gray-500 mt-2 text-sm font-medium">Gestión amigable y profesional</p>
+        </div>
+
+        <form id="formLogin" class="space-y-5">
+            <div class="space-y-2">
+                <label class="block text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-1">Email
+                    Usuario</label>
+                <div class="relative">
+                    <input type="email" id="email" required placeholder="tu@email.com"
+                        class="w-full pl-5 pr-5 py-4 bg-white/5 border border-white/10 rounded-2xl text-white outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all placeholder:text-gray-600 font-semibold">
+                </div>
+            </div>
+            <div class="space-y-2">
+                <label
+                    class="block text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-1">Contraseña</label>
+                <input type="password" id="password" required placeholder="••••••••"
+                    class="w-full px-5 py-4 bg-white/5 border border-white/10 rounded-2xl text-white outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all placeholder:text-gray-600 font-semibold">
+            </div>
+
+            <button type="submit" id="btnLogin"
+                class="w-full bg-blue-600 hover:bg-blue-500 text-white font-black py-4 rounded-2xl shadow-xl shadow-blue-600/20 transition-all transform active:scale-[0.98] flex items-center justify-center gap-3 text-xs uppercase tracking-widest mt-4">
+                <span>Ingresar ahora</span>
+                <i data-lucide="arrow-right" class="w-4 h-4"></i>
+            </button>
+        </form>
+
+        <div class="mt-8 pt-8 border-t border-white/5 text-center">
+            <p class="text-sm text-gray-500 italic">"Potenciando tu negocio ágilmente"</p>
+        </div>
+    </div>
+
+    <script type="module">
+        import { supabase } from './js/api/supabase.js';
+        import { notifier } from './js/utils/notifier.js';
+
+        const form = document.getElementById('formLogin');
+        const btn = document.getElementById('btnLogin');
+
+        form.onsubmit = async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+
+            btn.disabled = true;
+            btn.innerHTML = `<svg class="animate-spin h-5 w-5 mr-3 border-4 border-white border-t-transparent rounded-full" viewBox="0 0 24 24"></svg> Verificando...`;
+
+            try {
+                const { error } = await supabase.auth.signInWithPassword({ email, password });
+                if (error) throw error;
+                notifier.showToast('¡Bienvenido a la Solución!');
+                setTimeout(() => window.location.href = 'index.html', 800);
+            } catch (error) {
+                notifier.showToast('Error de acceso: ' + error.message, 'error');
+                btn.disabled = false;
+                btn.innerHTML = `<span>Acceder al Panel</span> <span class="text-xl">→</span>`;
+            }
+        };
+
+        // Redirigir si ya existe sesión activa
+        const checkSession = async () => {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session) window.location.href = 'index.html';
+        };
+        checkSession();
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,11 @@
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Dependencies
+node_modules/
+
+# Credenciales locales
+js/config.js
+.env
