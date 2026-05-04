@@ -53,7 +53,14 @@ CREATE OR REPLACE FUNCTION public.increment_receipt(p_id UUID)
 RETURNS INTEGER AS $$
 DECLARE
     nuevo_nro INTEGER;
+    v_my_playa_id UUID;
 BEGIN
+    -- VALIDACIÓN DE SEGURIDAD: Solo permitir si es la playa del usuario
+    v_my_playa_id := public.get_my_playa_id();
+    IF v_my_playa_id IS NULL OR v_my_playa_id != p_id THEN
+        RAISE EXCEPTION 'Acceso denegado: No tienes permiso para gestionar esta caja.';
+    END IF;
+
     UPDATE public.configuracion_caja 
     SET ultimo_nro_recibo = ultimo_nro_recibo + 1,
         updated_at = NOW()
@@ -62,7 +69,7 @@ BEGIN
     
     RETURN nuevo_nro;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 
 -- 3. TABLAS DINÁMICAS

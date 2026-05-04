@@ -1,5 +1,6 @@
 import { historyService } from './historyService.js';
 import { formatDate, formatDateTime } from '../utils/dateFormatter.js';
+import { security } from '../utils/security.js';
 
 export const historyUI = {
     currentTab: 'sales', // 'sales' o 'cash'
@@ -300,26 +301,34 @@ export const historyUI = {
                 `;
 
                 tbody.innerHTML = data.length === 0 ? `<tr><td colspan="6" class="px-6 py-10 text-center text-slate-400 uppercase text-[10px] font-black">No se encontraron ventas</td></tr>` :
-                    data.map(v => `
-                        <tr class="hover:bg-slate-50/50 transition border-b border-slate-50">
-                            <td class="px-6 py-4 text-slate-400 font-bold">${formatDate(v.fecha_venta)}</td>
-                            <td class="px-6 py-4">
-                                <div class="flex flex-col">
-                                    <span class="text-slate-900 font-black uppercase">${v.clientes.nombre}</span>
-                                    <span class="text-[9px] text-slate-400">${v.clientes.nro_documento}</span>
-                                </div>
-                            </td>
-                            <td class="px-6 py-4">
-                                <div class="flex flex-col">
-                                    <span class="text-slate-900 font-black uppercase">${v.vehiculos.marca} ${v.vehiculos.modelo} - ${v.vehiculos.anho || '----'}</span>
-                                    <span class="text-[9px] text-slate-400 font-mono text-xs">STOCK ${v.vehiculos.nro_stock ? v.vehiculos.nro_stock.toString().padStart(5, '0') : '-----'}</span>
-                                </div>
-                            </td>
-                            <td class="px-6 py-4 font-black text-slate-900">${this.formatMoney(v.total_venta)}</td>
-                            <td class="px-6 py-4 font-black text-emerald-600">${this.formatMoney(v.entrega_inicial)}</td>
-                            <td class="px-6 py-4 text-[10px] font-black uppercase text-slate-400">${v.perfiles?.nombre_completo || 'S/V'}</td>
-                        </tr>
-                    `).join('');
+                    data.map(v => {
+                        const clientName = security.esc(v.clientes.nombre);
+                        const clientDoc = security.esc(v.clientes.nro_documento);
+                        const vMarca = security.esc(v.vehiculos.marca);
+                        const vModelo = security.esc(v.vehiculos.modelo);
+                        const seller = security.esc(v.perfiles?.nombre_completo || 'S/V');
+
+                        return `
+                            <tr class="hover:bg-slate-50/50 transition border-b border-slate-50">
+                                <td class="px-6 py-4 text-slate-400 font-bold">${formatDate(v.fecha_venta)}</td>
+                                <td class="px-6 py-4">
+                                    <div class="flex flex-col">
+                                        <span class="text-slate-900 font-black uppercase">${clientName}</span>
+                                        <span class="text-[9px] text-slate-400">${clientDoc}</span>
+                                    </div>
+                                </td>
+                                <td class="px-6 py-4">
+                                    <div class="flex flex-col">
+                                        <span class="text-slate-900 font-black uppercase">${vMarca} ${vModelo} - ${v.vehiculos.anho || '----'}</span>
+                                        <span class="text-[9px] text-slate-400 font-mono text-xs">STOCK ${v.vehiculos.nro_stock ? v.vehiculos.nro_stock.toString().padStart(5, '0') : '-----'}</span>
+                                    </div>
+                                </td>
+                                <td class="px-6 py-4 font-black text-slate-900">${this.formatMoney(v.total_venta)}</td>
+                                <td class="px-6 py-4 font-black text-emerald-600">${this.formatMoney(v.entrega_inicial)}</td>
+                                <td class="px-6 py-4 text-[10px] font-black uppercase text-slate-400">${seller}</td>
+                            </tr>
+                        `;
+                    }).join('');
 
             } else {
                 const start = document.getElementById('filterCashStart')?.value;
@@ -346,12 +355,15 @@ export const historyUI = {
 
                 tbody.innerHTML = data.length === 0 ? `<tr><td colspan="7" class="px-6 py-10 text-center text-slate-400 uppercase text-[10px] font-black">No se encontraron movimientos</td></tr>` :
                     data.map(p => {
+                        const clientName = security.esc(p.ventas?.clientes?.nombre || 'S/D');
+                        const clientDoc = security.esc(p.ventas?.clientes?.nro_documento || '---');
                         const concept = p.cuota_id ? (p.cuotas?.es_refuerzo ? '<i data-lucide="rocket" class="w-3 h-3 inline mr-1"></i> Refuerzo' : `<i data-lucide="calendar" class="w-3 h-3 inline mr-1"></i> Cuota ${p.cuotas?.nro_cuota}`) : (p.observaciones?.includes('ABONO') ? '<i data-lucide="trending-down" class="w-3 h-3 inline mr-1"></i> Abono Capital' : '<i data-lucide="dollar-sign" class="w-3 h-3 inline mr-1 text-emerald-500"></i> Pago');
+                        
                         return `
                         <tr class="hover:bg-slate-50/50 transition border-b border-slate-50">
                             <td class="px-6 py-4 text-slate-400 font-bold text-[10px]">${formatDateTime(p.fecha_pago)}</td>
-                            <td class="px-6 py-4 font-black uppercase text-slate-900">${p.ventas?.clientes?.nombre || 'S/D'}</td>
-                            <td class="px-6 py-4 font-bold text-slate-500">${p.ventas?.clientes?.nro_documento || '---'}</td>
+                            <td class="px-6 py-4 font-black uppercase text-slate-900">${clientName}</td>
+                            <td class="px-6 py-4 font-bold text-slate-500">${clientDoc}</td>
                             <td class="px-6 py-4 font-black uppercase text-indigo-600 text-[10px] flex items-center">${concept}</td>
                             <td class="px-6 py-4 font-black text-emerald-600">${this.formatMoney(p.monto)}</td>
                             <td class="px-6 py-4 uppercase text-[9px] font-black text-slate-400">${p.tipo_pago}</td>

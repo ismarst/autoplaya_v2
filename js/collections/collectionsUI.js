@@ -1,6 +1,7 @@
 import { collectionsService } from './collectionsService.js';
 import { notifier } from '../utils/notifier.js';
 import { formatDate, formatDateTime } from '../utils/dateFormatter.js';
+import { security } from '../utils/security.js';
 
 export const collectionsUI = {
     // Helpers Locales
@@ -174,6 +175,10 @@ export const collectionsUI = {
                 </div>
             ` : '';
 
+            const clientName = security.esc(client.nombre);
+            const marca = security.esc(vehicle.marca);
+            const modelo = security.esc(vehicle.modelo || '');
+
             return `
                 <button onclick="window.selectDashboardClient('${client.id}')" 
                     id="client-card-${client.id}"
@@ -186,9 +191,9 @@ export const collectionsUI = {
                     <div class="flex justify-between items-start mb-2 relative z-10">
                         <div>
                             <p class="text-[9px] font-black uppercase opacity-70 tracking-widest mb-0.5">
-                                STOCK ${stock} ${vehicle.marca} ${vehicle.modelo || ''}
+                                STOCK ${stock} ${marca} ${modelo}
                             </p>
-                            <h4 class="text-sm font-black uppercase truncate max-w-[200px]">${client.nombre}</h4>
+                            <h4 class="text-sm font-black uppercase truncate max-w-[200px]">${clientName}</h4>
                             ${multiIndicator}
                         </div>
                     </div>
@@ -294,11 +299,16 @@ export const collectionsUI = {
                     <div class="flex items-center gap-3 bg-slate-50 border border-slate-200 px-4 py-2 rounded-2xl mb-6 shadow-sm">
                         <label class="text-[9px] font-black text-slate-400 uppercase tracking-widest whitespace-nowrap">Gestionar Cuenta:</label>
                         <select onchange="window.changeClientSale('${clientId}', this.value)" class="bg-transparent font-black text-xs uppercase text-slate-700 outline-none flex-1">
-                            ${sales.map(s => `
-                                <option value="${s.id}" ${s.id === this.currentSaleId ? 'selected' : ''}>
-                                    ${s.vehiculos.marca} ${s.vehiculos.modelo} [STOCK ${s.vehiculos.nro_stock ? s.vehiculos.nro_stock.toString().padStart(5, '0') : '-----'}]
-                                </option>
-                            `).join('')}
+                            ${sales.map(s => {
+                                const sMarca = security.esc(s.vehiculos.marca);
+                                const sModelo = security.esc(s.vehiculos.modelo);
+                                const sStock = s.vehiculos.nro_stock ? s.vehiculos.nro_stock.toString().padStart(5, '0') : '-----';
+                                return `
+                                    <option value="${s.id}" ${s.id === this.currentSaleId ? 'selected' : ''}>
+                                        ${sMarca} ${sModelo} [STOCK ${sStock}]
+                                    </option>
+                                `;
+                            }).join('')}
                         </select>
                     </div>
                 `;
@@ -306,6 +316,12 @@ export const collectionsUI = {
 
             // Bindings Globales vinculados
             window.changeClientSale = (cId, sId) => this.loadClientDetail(cId, playaId, sId);
+
+            const clientName = security.esc(client.nombre);
+            const clientDoc = security.esc(client.nro_documento);
+            const vMarca = security.esc(vehicle.marca);
+            const vModelo = security.esc(vehicle.modelo);
+            const vStock = vehicle.nro_stock ? vehicle.nro_stock.toString().padStart(5, '0') : '-----';
 
             // Render Panel Estructura
             panel.innerHTML = `
@@ -317,13 +333,13 @@ export const collectionsUI = {
                     <div class="flex justify-between items-start mb-6 shrink-0">
                         <div>
                             <div class="flex items-center gap-3">
-                                <h2 class="text-3xl font-black uppercase text-slate-900 tracking-tight">${client.nombre}</h2>
+                                <h2 class="text-3xl font-black uppercase text-slate-900 tracking-tight">${clientName}</h2>
                                 <span class="bg-slate-100 px-3 py-1 rounded-full text-[10px] font-black text-slate-500 uppercase tracking-widest border border-slate-200">
-                                    ${client.nro_documento}
+                                    ${clientDoc}
                                 </span>
                             </div>
                             <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">
-                                ${vehicle.marca} ${vehicle.modelo} [STOCK ${vehicle.nro_stock ? vehicle.nro_stock.toString().padStart(5, '0') : '-----'}]
+                                ${vMarca} ${vModelo} [STOCK ${vStock}]
                             </p>
                         </div>
                         

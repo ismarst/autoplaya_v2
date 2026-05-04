@@ -1,3 +1,5 @@
+import { security } from '../utils/security.js';
+
 /**
  * Formatea moneda a Guaraníes (PYG) sin decimales.
  */
@@ -98,12 +100,17 @@ export const inventoryUI = {
         let gridHtml = vehicles.map(v => {
             const photoCount = v.fotos ? v.fotos.length : 0;
             const mainPhoto = photoCount > 0 ? v.fotos[0] : 'https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?auto=format&fit=crop&q=80&w=400';
+            
+            const marca = security.esc(v.marca);
+            const modelo = security.esc(v.modelo);
+            const color = security.esc(v.color || 'S/C');
+            const local = security.esc(v.locales?.nombre || 'Central');
 
             return `
                 <div class="bg-white rounded-2xl shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden group border border-gray-100 cursor-pointer vehicle-card animate-in fade-in duration-500" data-id="${v.id}">
                     <!-- Image -->
                     <div class="relative h-48 overflow-hidden">
-                        <img src="${mainPhoto}" alt="${v.marca} ${v.modelo}" 
+                        <img src="${mainPhoto}" alt="${marca} ${modelo}" 
                              class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
                         <div class="absolute top-3 right-3 flex flex-col gap-2 items-end">
                             <span class="px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${v.estado === 'disponible' ? 'bg-green-100 text-green-700' :
@@ -123,8 +130,8 @@ export const inventoryUI = {
                     <!-- Details -->
                     <div class="p-4">
                         <div class="flex justify-between items-start mb-1">
-                            <h3 class="font-bold text-gray-900 text-lg truncate flex-1">${v.marca} ${v.modelo}</h3>
-                            <span class="text-[10px] font-bold text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded uppercase">${v.color || 'S/C'}</span>
+                            <h3 class="font-bold text-gray-900 text-lg truncate flex-1">${marca} ${modelo}</h3>
+                            <span class="text-[10px] font-bold text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded uppercase">${color}</span>
                         </div>
                         <p class="text-sm text-gray-500 mb-4">${v.anho} • ${v.combustible} • ${v.transmision}</p>
                         
@@ -138,10 +145,10 @@ export const inventoryUI = {
                                 <span class="font-semibold text-gray-700">${formatPYG(v.precio_lista)}</span>
                             </div>
                         </div>
-
+ 
                         <div class="flex items-center text-xs text-gray-400 border-t pt-3 justify-between">
                             <div class="flex items-center">
-                                <i data-lucide="map-pin" class="mr-1 w-3 h-3"></i> ${v.locales?.nombre || 'Central'}
+                                <i data-lucide="map-pin" class="mr-1 w-3 h-3"></i> ${local}
                             </div>
                             <span class="text-[10px] font-black text-blue-500 bg-blue-50 px-1.5 py-0.5 rounded">
                                 STOCK ${v.nro_stock ? v.nro_stock.toString().padStart(5, '0') : '-----'}
@@ -225,13 +232,23 @@ export const inventoryUI = {
         let currentPhotoIndex = 0;
         const photos = vehicle.fotos && vehicle.fotos.length > 0 ? vehicle.fotos : ['https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?auto=format&fit=crop&q=80&w=800'];
 
+        const marca = security.esc(vehicle.marca);
+        const modelo = security.esc(vehicle.modelo);
+        const color = security.esc(vehicle.color || '-');
+        const chapa = security.esc(vehicle.chapa || 'SIN CHAPA');
+        const combustible = security.esc(vehicle.combustible);
+        const transmision = security.esc(vehicle.transmision);
+        const local = security.esc(vehicle.locales?.nombre || 'Central');
+        const chasis = security.esc(vehicle.nro_chasis || 'S/N');
+        const descripcion = security.esc(vehicle.descripcion);
+
         const modalHtml = `
             <div id="modalDetail" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-in fade-in duration-300">
                 <div class="bg-gray-50 w-full max-w-2xl rounded-[2.5rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300 border border-white/20">
                     
                     <!-- Galería de Fotos -->
                     <div class="relative h-[40vh] sm:h-[50vh] bg-black group">
-                        <img id="mainDetailPhoto" src="${photos[0]}" alt="Vehículo" class="w-full h-full object-contain transition-all duration-500">
+                        <img id="mainDetailPhoto" src="${photos[0]}" alt="${marca}" class="w-full h-full object-contain transition-all duration-500">
                         
                         <!-- Controles de Galería -->
                         ${photos.length > 1 ? `
@@ -256,27 +273,27 @@ export const inventoryUI = {
                     <!-- Información -->
                     <div class="p-8 max-h-[40vh] overflow-y-auto custom-scrollbar">
                         <div class="mb-8">
-                            <h2 class="text-3xl font-black text-gray-900 leading-tight uppercase">${vehicle.marca} ${vehicle.modelo}</h2>
-                            <p class="text-gray-400 font-bold tracking-widest uppercase text-sm mt-1">${vehicle.anho} • ${vehicle.combustible} • ${vehicle.transmision}</p>
+                            <h2 class="text-3xl font-black text-gray-900 leading-tight uppercase">${marca} ${modelo}</h2>
+                            <p class="text-gray-400 font-bold tracking-widest uppercase text-sm mt-1">${vehicle.anho} • ${combustible} • ${transmision}</p>
                         </div>
 
                         <!-- Grid de Datos -->
                         <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
                             <div class="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm">
                                 <p class="text-[10px] text-gray-400 font-black uppercase tracking-tighter mb-1">Color</p>
-                                <p class="font-bold text-gray-800 uppercase truncate">${vehicle.color || '-'}</p>
+                                <p class="font-bold text-gray-800 uppercase truncate">${color}</p>
                             </div>
                             <div class="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm">
                                 <p class="text-[10px] text-gray-400 font-black uppercase tracking-tighter mb-1">Chapa</p>
-                                <p class="font-bold text-gray-800 uppercase truncate">${vehicle.chapa || 'SIN CHAPA'}</p>
+                                <p class="font-bold text-gray-800 uppercase truncate">${chapa}</p>
                             </div>
                             <div class="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm">
                                 <p class="text-[10px] text-gray-400 font-black uppercase tracking-tighter mb-1">Transmisión</p>
-                                <p class="font-bold text-gray-800 uppercase truncate">${vehicle.transmision}</p>
+                                <p class="font-bold text-gray-800 uppercase truncate">${transmision}</p>
                             </div>
                             <div class="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm">
                                 <p class="text-[10px] text-gray-400 font-black uppercase tracking-tighter mb-1">Local</p>
-                                <p class="font-bold text-gray-800 uppercase truncate">${vehicle.locales?.nombre || 'Central'}</p>
+                                <p class="font-bold text-gray-800 uppercase truncate">${local}</p>
                             </div>
                         </div>
 
@@ -299,7 +316,7 @@ export const inventoryUI = {
                         </div>
 
                         <div class="text-gray-400 text-[10px] font-bold uppercase tracking-widest mb-4 flex justify-between px-2">
-                           <span>NRO. CHASIS: ${vehicle.nro_chasis || 'S/N'}</span>
+                           <span>NRO. CHASIS: ${chasis}</span>
                            <span class="text-blue-500 font-black">STOCK ${vehicle.nro_stock ? vehicle.nro_stock.toString().padStart(5, '0') : '-----'}</span>
                         </div>
 
@@ -307,7 +324,7 @@ export const inventoryUI = {
                         ${vehicle.descripcion ? `
                             <div class="mb-8 py-5 border-y border-gray-100 italic">
                                 <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Información técnica y Extras</p>
-                                <p class="text-sm font-bold text-gray-700 leading-relaxed uppercase">${vehicle.descripcion}</p>
+                                <p class="text-sm font-bold text-gray-700 leading-relaxed uppercase">${descripcion}</p>
                             </div>
                         ` : ''}
 
@@ -382,6 +399,18 @@ export const inventoryUI = {
      */
     renderVehicleModal(locals, vehicle = null) {
         const isEdit = !!vehicle;
+        
+        // Sanitizar valores para el formulario
+        const vMarca = isEdit ? security.esc(vehicle.marca) : '';
+        const vModelo = isEdit ? security.esc(vehicle.modelo) : '';
+        const vAnho = isEdit ? vehicle.anho : '';
+        const vColor = isEdit ? security.esc(vehicle.color || '') : '';
+        const vChapa = isEdit ? security.esc(vehicle.chapa || '') : '';
+        const vChasis = isEdit ? security.esc(vehicle.nro_chasis || '') : '';
+        const vEntrega = isEdit ? vehicle.entrega_minima : '';
+        const vPrecio = isEdit ? vehicle.precio_contado : '';
+        const vDesc = isEdit ? security.esc(vehicle.descripcion || '') : '';
+
         const modalHtml = `
             <div id="modalVehicle" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
                 <div class="bg-white w-full max-w-2xl rounded-[2.5rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300 transform border border-gray-100">
@@ -400,31 +429,31 @@ export const inventoryUI = {
                             <!-- Marca y Modelo -->
                             <div class="space-y-2">
                                 <label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Marca *</label>
-                                <input type="text" name="marca" required value="${isEdit ? vehicle.marca : ''}" class="w-full px-5 py-3 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-blue-500 outline-none transition-all font-semibold uppercase" placeholder="EJ: TOYOTA">
+                                <input type="text" name="marca" required value="${vMarca}" class="w-full px-5 py-3 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-blue-500 outline-none transition-all font-semibold uppercase" placeholder="EJ: TOYOTA">
                             </div>
                             <div class="space-y-2">
                                 <label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Modelo *</label>
-                                <input type="text" name="modelo" required value="${isEdit ? vehicle.modelo : ''}" class="w-full px-5 py-3 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-blue-500 outline-none transition-all font-semibold uppercase" placeholder="EJ: HILUX">
+                                <input type="text" name="modelo" required value="${vModelo}" class="w-full px-5 py-3 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-blue-500 outline-none transition-all font-semibold uppercase" placeholder="EJ: HILUX">
                             </div>
 
                             <!-- Año y Color -->
                             <div class="space-y-2">
                                 <label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Año *</label>
-                                <input type="text" name="anho" required value="${isEdit ? vehicle.anho : ''}" maxlength="4" class="w-full px-5 py-3 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-blue-500 outline-none transition-all font-semibold" placeholder="EJ: 2024">
+                                <input type="text" name="anho" required value="${vAnho}" maxlength="4" class="w-full px-5 py-3 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-blue-500 outline-none transition-all font-semibold" placeholder="EJ: 2024">
                             </div>
                             <div class="space-y-2">
                                 <label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Color *</label>
-                                <input type="text" name="color" required value="${isEdit ? vehicle.color || '' : ''}" placeholder="Ej: Blanco" class="w-full px-5 py-3 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-blue-500 outline-none transition-all font-semibold uppercase">
+                                <input type="text" name="color" required value="${vColor}" placeholder="Ej: Blanco" class="w-full px-5 py-3 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-blue-500 outline-none transition-all font-semibold uppercase">
                             </div>
 
                             <!-- Chapa y Chasis -->
                             <div class="space-y-2">
                                 <label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Chapa</label>
-                                <input type="text" name="chapa" value="${isEdit ? vehicle.chapa || '' : ''}" class="w-full px-5 py-3 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-blue-500 outline-none transition-all font-semibold placeholder:text-gray-300 uppercase" placeholder="ABC 123">
+                                <input type="text" name="chapa" value="${vChapa}" class="w-full px-5 py-3 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-blue-500 outline-none transition-all font-semibold placeholder:text-gray-300 uppercase" placeholder="ABC 123">
                             </div>
                             <div class="space-y-2">
                                 <label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Nro de Chasis</label>
-                                <input type="text" name="nro_chasis" value="${isEdit ? (vehicle.nro_chasis || '') : ''}" class="w-full px-5 py-3 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-blue-500 outline-none transition-all font-semibold uppercase placeholder:text-gray-300" placeholder="OPCIONAL">
+                                <input type="text" name="nro_chasis" value="${vChasis}" class="w-full px-5 py-3 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-blue-500 outline-none transition-all font-semibold uppercase placeholder:text-gray-300" placeholder="OPCIONAL">
                             </div>
 
                             <!-- Local y Estado -->
@@ -466,15 +495,15 @@ export const inventoryUI = {
                              <!-- Precios -->
                              <div class="space-y-2">
                                  <label class="block text-[10px] font-black text-blue-500 uppercase tracking-widest ml-1">Precio Contado (PYG) *</label>
-                                 <input type="text" name="precio_contado" data-type="currency" required value="${isEdit ? formatPYG(vehicle.precio_contado).replace(/[^\d]/g, '') : ''}" class="w-full px-5 py-3 bg-blue-50/50 border border-blue-100 rounded-2xl focus:ring-2 focus:ring-blue-500 outline-none transition-all font-black text-blue-600 text-lg">
+                                 <input type="text" name="precio_contado" data-type="currency" required value="${isEdit ? security.esc(formatPYG(vehicle.precio_contado).replace(/[^\d]/g, '')) : ''}" class="w-full px-5 py-3 bg-blue-50/50 border border-blue-100 rounded-2xl focus:ring-2 focus:ring-blue-500 outline-none transition-all font-black text-blue-600 text-lg">
                              </div>
                              <div class="space-y-2">
                                  <label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Precio Lista / Financiado</label>
-                                 <input type="text" name="precio_lista" data-type="currency" value="${isEdit ? (vehicle.precio_lista ? formatPYG(vehicle.precio_lista).replace(/[^\d]/g, '') : '') : ''}" class="w-full px-5 py-3 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-blue-500 outline-none transition-all font-black text-gray-700 text-lg" placeholder="OPCIONAL">
+                                 <input type="text" name="precio_lista" data-type="currency" value="${isEdit ? security.esc(vehicle.precio_lista ? formatPYG(vehicle.precio_lista).replace(/[^\d]/g, '') : '') : ''}" class="w-full px-5 py-3 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-blue-500 outline-none transition-all font-black text-gray-700 text-lg" placeholder="OPCIONAL">
                              </div>
                              <div class="space-y-2">
                                  <label class="block text-[10px] font-black text-green-600 uppercase tracking-widest ml-1">Entrega Mínima</label>
-                                 <input type="text" name="entrega_minima" data-type="currency" value="${isEdit ? (vehicle.entrega_minima ? formatPYG(vehicle.entrega_minima).replace(/[^\d]/g, '') : '') : ''}" class="w-full px-5 py-3 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-blue-500 outline-none transition-all font-black text-green-600 text-lg" placeholder="OPCIONAL">
+                                 <input type="text" name="entrega_minima" data-type="currency" value="${isEdit ? security.esc(vehicle.entrega_minima ? formatPYG(vehicle.entrega_minima).replace(/[^\d]/g, '') : '') : ''}" class="w-full px-5 py-3 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-blue-500 outline-none transition-all font-black text-green-600 text-lg" placeholder="OPCIONAL">
                              </div>
                          </div>
  
@@ -484,7 +513,7 @@ export const inventoryUI = {
                                  <label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest font-black">Descripción / Extras</label>
                                  <span id="charCounter" class="text-[9px] font-black bg-gray-100 px-2 py-0.5 rounded-full text-gray-400 uppercase tracking-tighter">0 / 170</span>
                              </div>
-                             <textarea name="descripcion" maxlength="170" rows="2" class="w-full px-5 py-3 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-blue-500 outline-none transition-all font-semibold uppercase resize-none placeholder:text-gray-300" placeholder="Ej: Techo solar, Tapizado de cuero, Poco uso...">${isEdit ? (vehicle.descripcion || '') : ''}</textarea>
+                             <textarea name="descripcion" maxlength="170" rows="2" class="w-full px-5 py-3 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-blue-500 outline-none transition-all font-semibold uppercase resize-none placeholder:text-gray-300" placeholder="Ej: Techo solar, Tapizado de cuero, Poco uso...">${vDesc}</textarea>
                          </div>
 
                         <!-- Fotos -->
@@ -717,8 +746,8 @@ export const inventoryUI = {
         } else {
             btn.disabled = false;
             btn.innerHTML = `
-                <i data-lucide="check" class="w-5 h-5 mr-2"></i>
-                <span>Procesar</span>
+                <i data-lucide="save" class="w-5 h-5 mr-2"></i>
+                <span>Guardar Cambios</span>
             `;
             if (window.lucide) lucide.createIcons();
         }
