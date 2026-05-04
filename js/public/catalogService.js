@@ -2,9 +2,11 @@ import { supabase } from '../api/supabase.js';
 
 export const catalogService = {
     /**
-     * Obtiene el inventario público de vehículos disponibles con paginación
+     * Obtiene el inventario público de vehículos disponibles con paginación.
+     * El playaId viene de la URL (?playa=UUID) y filtra los resultados por tenant.
+     * La anon key de Supabase es pública por diseño; la seguridad real está en RLS.
      */
-    async getPublicInventory({ searchTerm = '', page = 1, pageSize = 6 } = {}) {
+    async getPublicInventory({ searchTerm = '', page = 1, pageSize = 6, playaId = null } = {}) {
         try {
             const from = (page - 1) * pageSize;
             const to = from + pageSize - 1;
@@ -18,10 +20,16 @@ export const catalogService = {
                 .is('deleted_at', null)
                 .neq('estado', 'vendido')
                 .order('created_at', { ascending: false })
-                .range(from, to); // Paginación nativa de Supabase
+                .range(from, to);
 
-            // Nota: Aquí se asume que si hubiera múltiples dueños, se filtraría por playa_id
-            // query = query.eq('playa_id', 1);
+            // Filtro por tenant: solo muestra vehículos de la playa indicada en la URL.
+            // Si no se pasa playaId, el catálogo no devuelve resultados (protección multiclient).
+            if (playaId) {
+                query = query.eq('playa_id', playaId);
+            } else {
+                // Sin playa_id en URL, devuelve array vacío en lugar de mezclar tenants
+                return [];
+            }
 
             if (searchTerm) {
                 const words = searchTerm.trim().split(/\s+/);
@@ -35,7 +43,6 @@ export const catalogService = {
                     if (!isNaN(word) && word.length === 4) {
                         filterParts.push(`anho.eq.${parseInt(word)}`);
                     }
-                    // Búsqueda por Stock a veces puede ser útil si los refieren por código
                     if (!isNaN(word) && word.length === 5) {
                         filterParts.push(`nro_stock.eq.${parseInt(word)}`);
                     }

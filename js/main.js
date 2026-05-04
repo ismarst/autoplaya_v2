@@ -568,11 +568,11 @@ async function init() {
                 if (type === 'mensual') {
                     rateTypeMensual.className = "px-2 py-0.5 text-[9px] font-black uppercase rounded text-white bg-slate-600 shadow-sm transition-all";
                     rateTypeAnual.className = "px-2 py-0.5 text-[9px] font-black uppercase rounded text-slate-500 hover:text-slate-700 transition-all";
-                    tasaInfo.textContent = "Tasa Mensual Directa";
+                    if (tasaInfo) tasaInfo.textContent = "Tasa Mensual Directa";
                 } else {
                     rateTypeAnual.className = "px-2 py-0.5 text-[9px] font-black uppercase rounded text-white bg-slate-600 shadow-sm transition-all";
                     rateTypeMensual.className = "px-2 py-0.5 text-[9px] font-black uppercase rounded text-slate-500 hover:text-slate-700 transition-all";
-                    tasaInfo.textContent = "Tasa Anual (Se divide por 12)";
+                    if (tasaInfo) tasaInfo.textContent = "Tasa Anual (Se divide por 12)";
                 }
                 updateFinancials();
             };
@@ -755,9 +755,18 @@ async function init() {
             form.onsubmit = async (e) => {
                 e.preventDefault();
 
-                // Validaciones básicas
+                // Validaciones de negocio
                 if (!vehicleSelect.value) return notifier.showToast('Seleccione un vehículo', 'error');
                 if (!document.getElementById('saleClient').value) return notifier.showToast('Seleccione un cliente', 'error');
+
+                const tipoVenta = document.getElementById('tipo_venta').value;
+                const totalVenta = parseMoney(totalInput.value);
+                const entregaVenta = parseMoney(entregaInput.value);
+                const cantCuotas = parseInt(cuotasInput.value || 0);
+
+                if (totalVenta <= 0) return notifier.showToast('El monto total debe ser mayor a cero', 'error');
+                if (tipoVenta === 'financiado' && cantCuotas < 1) return notifier.showToast('Ingrese la cantidad de cuotas (mínimo 1)', 'error');
+                if (tipoVenta === 'financiado' && entregaVenta >= totalVenta) return notifier.showToast('La entrega inicial no puede igualar o superar el total', 'error');
 
                 if (!confirm('¿CONFIRMAR VENTA? Esta acción es irreversible.')) return;
 
@@ -953,7 +962,7 @@ async function init() {
                     }
                     document.getElementById('closeModal').click();
                     await loadInventory();
-                } catch (err) { notifier.showToast(err.message, 'error'); }
+                } catch (err) { notifier.showToast(err.message || 'Error inesperado al guardar', 'error'); }
                 finally { inventoryUI.setLoading(false); }
             };
         };

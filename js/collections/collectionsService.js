@@ -150,31 +150,15 @@ export const collectionsService = {
         };
     },
 
+    /**
+     * Genera el próximo número de recibo de forma ATÓMICA via RPC de PostgreSQL.
+     * La función increment_receipt usa UPDATE...RETURNING, que es atómico a nivel
+     * de fila y evita duplicados en cobros simultáneos (race condition corregido).
+     */
     async _generateReceiptNumber(playaId) {
-        // 1. Obtener e Incrementar el correlativo de recibo (Atómico en lo posible vía .select)
-        const { data: config, error: configError } = await supabase
-            .from('configuracion_caja')
-            .update({ ultimo_nro_recibo: supabase.rpc('increment_receipt', { p_id: playaId }) || 1 }) // fallback si no hay rpc
-            .eq('playa_id', playaId)
-            .select()
-            .single();
-
-        // Si falla el update o no existe increment_receipt (procede manual por ahora)
-        let nroRecibo;
-        if (configError) {
-            // Intento manual (lectura y suma)
-            const { data: current } = await supabase
-                .from('configuracion_caja')
-                .select('ultimo_nro_recibo')
-                .eq('playa_id', playaId)
-                .single();
-
-            nroRecibo = (current?.ultimo_nro_recibo || 0) + 1;
-            await supabase.from('configuracion_caja').upsert({ playa_id: playaId, ultimo_nro_recibo: nroRecibo });
-        } else {
-            nroRecibo = config.ultimo_nro_recibo;
-        }
-        return nroRecibo;
+        const { data, error } = await supabase.rpc('increment_receipt', { p_id: playaId });
+        if (error) throw new Error('No se pudo generar el número de recibo: ' + error.message);
+        return data;
     },
 
     /**

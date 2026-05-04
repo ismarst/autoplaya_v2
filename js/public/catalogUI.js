@@ -1,6 +1,13 @@
 import { catalogService } from './catalogService.js';
 
-const waNumber = "59599999999"; // O cualquier número de WhatsApp por defecto sin el +
+// Protección XSS: escapa caracteres HTML antes de insertar datos de la DB en el DOM
+const esc = (str) => String(str ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+// Tenant ID leído desde la URL: catalogo.html?playa=<UUID_DE_LA_PLAYA>
+// Cada cliente accede con su propio UUID para ver solo sus vehículos.
+const PLAYA_ID = new URLSearchParams(window.location.search).get('playa');
+
+const waNumber = "59599999999"; // TODO: cargar desde playas.configuracion
 const catalogUI = {
     allVehicles: [], // Vehículos CARGADOS ACTUALMENTE
     currentPage: 1,
@@ -62,7 +69,8 @@ const catalogUI = {
             const newVehicles = await catalogService.getPublicInventory({ 
                 searchTerm: this.searchTerm, 
                 page: this.currentPage, 
-                pageSize: this.pageSize 
+                pageSize: this.pageSize,
+                playaId: PLAYA_ID
             });
 
             if (newVehicles.length < this.pageSize) {
@@ -120,19 +128,22 @@ const catalogUI = {
         const html = vehicles.map(v => {
             const mainImg = (v.fotos && v.fotos.length > 0) ? v.fotos[0] : 'https://placehold.co/600x400/f8fafc/94a3b8?text=Sin+Foto';
             const price = this.formatMoney(v.precio_contado || v.precio_lista);
+            const marca = esc(v.marca);
+            const modelo = esc(v.modelo);
+            const sucursal = esc(v.locales?.nombre || 'Sucursal Principal');
 
             return `
                 <div class="bg-white rounded-[2rem] shadow-sm shadow-slate-200/50 border border-slate-100 overflow-hidden flex flex-col group cursor-pointer hover:shadow-xl transition-all duration-300 transform md:hover:-translate-y-1">
                     <div class="relative h-56 bg-slate-100 overflow-hidden" onclick="window.catalogUI.showDetails('${v.id}')">
-                        <img src="${mainImg}" alt="${v.marca} ${v.modelo}" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105">
+                        <img src="${mainImg}" alt="${marca} ${modelo}" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105">
                         <div class="absolute top-4 left-4 bg-white/90 backdrop-blur-sm text-slate-900 text-[10px] font-black uppercase px-3 py-1.5 rounded-xl shadow-lg border border-white/50">
                             ${v.anho}
                         </div>
                     </div>
                     <div class="p-5 flex flex-col flex-1 space-y-4">
                         <div class="flex-1" onclick="window.catalogUI.showDetails('${v.id}')">
-                            <h2 class="text-lg font-black text-slate-900 leading-tight uppercase tracking-tighter line-clamp-2">${v.marca} ${v.modelo}</h2>
-                            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">${v.locales?.nombre || 'Sucursal Principal'}</p>
+                            <h2 class="text-lg font-black text-slate-900 leading-tight uppercase tracking-tighter line-clamp-2">${marca} ${modelo}</h2>
+                            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">${sucursal}</p>
                             <div class="mt-4 flex items-baseline text-blue-600 gap-1">
                                 <span class="text-[10px] font-bold uppercase tracking-widest align-top mt-1">Gs.</span>
                                 <span class="text-xl font-black tracking-tighter">${price}</span>
@@ -165,6 +176,9 @@ const catalogUI = {
         const content = document.getElementById('modalContent');
         const price = this.formatMoney(vehicle.precio_contado || vehicle.precio_lista);
         const images = (vehicle.fotos && vehicle.fotos.length > 0) ? vehicle.fotos : ['https://placehold.co/600x400/f8fafc/94a3b8?text=Sin+Foto'];
+        const marca = esc(vehicle.marca);
+        const modelo = esc(vehicle.modelo);
+        const observaciones = esc(vehicle.observaciones);
 
         content.innerHTML = `
             <!-- Galeria -->
@@ -182,7 +196,7 @@ const catalogUI = {
             <!-- Header Detalles -->
             <div class="p-6 bg-white border-b border-slate-50 relative -mt-4 rounded-t-[2.5rem] z-10 shadow-[0_-4px_20px_rgba(0,0,0,0.02)]">
                 <div class="flex justify-between items-start gap-4 mb-2">
-                    <h2 class="text-2xl font-black text-slate-900 uppercase tracking-tighter leading-none">${vehicle.marca} <br/><span class="text-slate-500">${vehicle.modelo}</span></h2>
+                    <h2 class="text-2xl font-black text-slate-900 uppercase tracking-tighter leading-none">${marca} <br/><span class="text-slate-500">${modelo}</span></h2>
                     <div class="bg-blue-50 text-blue-600 px-3 py-1.5 rounded-xl font-black text-sm text-center border border-blue-100/50 shadow-sm ml-auto">
                         ${vehicle.anho}
                     </div>
@@ -211,7 +225,7 @@ const catalogUI = {
                 ${vehicle.observaciones ? `
                     <div class="bg-slate-50 p-5 rounded-3xl border border-slate-100">
                         <h3 class="text-[9px] font-black uppercase text-slate-400 tracking-widest mb-2">Notas Adicionales</h3>
-                        <p class="text-xs text-slate-600 leading-relaxed font-bold whitespace-pre-line">${vehicle.observaciones}</p>
+                        <p class="text-xs text-slate-600 leading-relaxed font-bold whitespace-pre-line">${observaciones}</p>
                     </div>
                 ` : ''}
             </div>
@@ -241,6 +255,7 @@ const catalogUI = {
     },
 
     renderSpecItem(icon, label, value) {
+        const safeValue = esc(value);
         return `
             <div class="flex items-center gap-3 bg-white p-3 rounded-2xl border border-slate-50 shadow-sm shadow-slate-100/50">
                 <div class="bg-slate-50 w-8 h-8 rounded-xl flex justify-center items-center shrink-0">
@@ -248,7 +263,7 @@ const catalogUI = {
                 </div>
                 <div class="overflow-hidden">
                     <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1 opacity-70">${label}</p>
-                    <p class="text-[11px] font-bold text-slate-700 uppercase break-words leading-tight line-clamp-2">${value}</p>
+                    <p class="text-[11px] font-bold text-slate-700 uppercase break-words leading-tight line-clamp-2">${safeValue}</p>
                 </div>
             </div>
         `;

@@ -257,3 +257,28 @@ CREATE POLICY "Users can view/manage caja config of their playa" ON public.confi
 INSERT INTO public.configuracion_caja (playa_id, ultimo_nro_recibo)
 SELECT id, 0 FROM public.playas
 ON CONFLICT (playa_id) DO NOTHING;
+
+-- 7. ÍNDICES DE PERFORMANCE
+-- Búsquedas frecuentes en inventario (catálogo público y panel admin)
+CREATE INDEX IF NOT EXISTS idx_vehiculos_playa_estado
+    ON public.vehiculos(playa_id, estado) WHERE deleted_at IS NULL;
+
+-- Cobranzas: cuotas por estado y vencimiento
+CREATE INDEX IF NOT EXISTS idx_cuotas_playa_estado_venc
+    ON public.cuotas(playa_id, estado, fecha_vencimiento);
+
+-- Reportes y caja: pagos por fecha
+CREATE INDEX IF NOT EXISTS idx_pagos_playa_fecha
+    ON public.pagos(playa_id, fecha_pago DESC);
+
+-- Historial de ventas
+CREATE INDEX IF NOT EXISTS idx_ventas_playa_fecha
+    ON public.ventas(playa_id, fecha_venta DESC);
+
+-- Búsqueda de clientes activos
+CREATE INDEX IF NOT EXISTS idx_clientes_playa
+    ON public.clientes(playa_id) WHERE deleted_at IS NULL;
+
+-- Locales activos por playa
+CREATE INDEX IF NOT EXISTS idx_locales_playa
+    ON public.locales(playa_id) WHERE deleted_at IS NULL;

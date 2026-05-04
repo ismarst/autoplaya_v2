@@ -6,6 +6,11 @@
 # Dependencies
 node_modules/
 
-# Credenciales locales
+# Credenciales locales (contiene SUPABASE_URL y ANON_KEY reales)
 js/config.js
-.env
+
+# Schema de API exportado de Supabase (expone estructura interna)
+schema.json
+
+# Archivos de prueba de desarrollo
+test_rls.mjs
