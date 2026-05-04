@@ -1,0 +1,95 @@
+# ============================================================
+# autoPlaya v2 — Apache Configuration (cPanel / Shared Hosting)
+# ============================================================
+
+# --- SEGURIDAD: Bloquear acceso directo a archivos sensibles ---
+
+# Bloquear archivos de entorno
+<Files ".env">
+    Order allow,deny
+    Deny from all
+</Files>
+
+<Files ".env.local">
+    Order allow,deny
+    Deny from all
+</Files>
+
+# Bloquear archivos SQL (schema, migraciones)
+<FilesMatch "\.sql$">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
+
+# Bloquear archivos de configuración con credenciales
+<Files "config.js">
+    # config.js contiene la anon key de Supabase.
+    # La anon key es PÚBLICA por diseño de Supabase — la seguridad
+    # real está en las políticas RLS de la base de datos.
+    # Si en el futuro se agrega la service_role key, DEBE bloquearse aquí.
+    # Order allow,deny
+    # Deny from all
+</Files>
+
+# Bloquear archivos de prueba y desarrollo
+<FilesMatch "\.(mjs|test\.js)$">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
+
+# Bloquear acceso al directorio .git si por algún error se subió
+<IfModule mod_rewrite.c>
+    RewriteRule ^\.git - [F,L]
+</IfModule>
+
+# Bloquear archivos de documentación interna
+<FilesMatch "\.(md)$">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
+
+# Bloquear directorios sensibles
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteRule ^AUDITORIA/ - [F,L]
+    RewriteRule ^sql/ - [F,L]
+</IfModule>
+
+# --- PERFORMANCE: Caché del browser para assets estáticos ---
+<IfModule mod_expires.c>
+    ExpiresActive On
+    ExpiresByType image/jpeg "access plus 1 month"
+    ExpiresByType image/png "access plus 1 month"
+    ExpiresByType image/svg+xml "access plus 1 month"
+    ExpiresByType image/webp "access plus 1 month"
+    ExpiresByType text/css "access plus 1 week"
+    ExpiresByType application/javascript "access plus 1 week"
+    ExpiresByType text/html "access plus 1 hour"
+</IfModule>
+
+# --- SEGURIDAD: Headers HTTP de seguridad ---
+<IfModule mod_headers.c>
+    # Prevenir que el browser adivine el tipo de contenido
+    Header set X-Content-Type-Options "nosniff"
+
+    # Prevenir que la página se cargue en un iframe (clickjacking)
+    Header set X-Frame-Options "SAMEORIGIN"
+
+    # Forzar HTTPS por 1 año (activar solo si tenés SSL configurado)
+    # Header set Strict-Transport-Security "max-age=31536000; includeSubDomains"
+
+    # Referrer policy
+    Header set Referrer-Policy "strict-origin-when-cross-origin"
+</IfModule>
+
+# --- COMPRESIÓN: Reducir tamaño de transferencia ---
+<IfModule mod_deflate.c>
+    AddOutputFilterByType DEFLATE text/html text/plain text/css
+    AddOutputFilterByType DEFLATE application/javascript application/json
+    AddOutputFilterByType DEFLATE image/svg+xml
+</IfModule>
+
+# --- MIME TYPES: Soporte para ES Modules ---
+<IfModule mod_mime.c>
+    AddType application/javascript .js .mjs
+</IfModule>
