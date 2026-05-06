@@ -1,5 +1,5 @@
 import { supabase } from '../api/supabase.js';
-import { CONFIG } from '../config.js';
+import { tenantService } from '../api/tenantService.js';
 
 export const clientService = {
     async getClients({ searchTerm = '' } = {}) {
@@ -7,7 +7,7 @@ export const clientService = {
             let query = supabase
                 .from('clientes')
                 .select('*')
-                .eq('playa_id', CONFIG.PLAYA_ID) // <-- BLINDAJE MULTITENANT
+                .eq('playa_id', tenantService.getPlayaId()) // <-- BLINDAJE DINÁMICO
                 .is('deleted_at', null)
                 .order('nombre', { ascending: true });
 
@@ -47,7 +47,7 @@ export const clientService = {
                 .from('clientes')
                 .update(clientData)
                 .eq('id', id)
-                .eq('playa_id', CONFIG.PLAYA_ID) // BLINDAJE
+                .eq('playa_id', tenantService.getPlayaId()) // BLINDAJE DINÁMICO
                 .select()
                 .single();
 
@@ -65,7 +65,7 @@ export const clientService = {
                 .from('clientes')
                 .update({ deleted_at: new Date().toISOString() })
                 .eq('id', id)
-                .eq('playa_id', CONFIG.PLAYA_ID); // BLINDAJE
+                .eq('playa_id', tenantService.getPlayaId()); // BLINDAJE DINÁMICO
 
             if (error) throw error;
             return true;

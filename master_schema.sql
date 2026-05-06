@@ -80,6 +80,8 @@ CREATE TABLE IF NOT EXISTS public.playas (
     id UUID PRIMARY KEY DEFAULT extensions.uuid_generate_v4(),
     nombre_comercial TEXT NOT NULL,
     ruc TEXT,
+    dominio TEXT UNIQUE, -- Para identificación por URL (SaaS)
+    logo_url TEXT, -- Para marca blanca dinámica
     configuracion JSONB DEFAULT '{}'::jsonb,
     created_at TIMESTAMPTZ DEFAULT now(),
     deleted_at TIMESTAMPTZ
@@ -232,6 +234,10 @@ CREATE POLICY "Users can view their own playa" ON public.playas FOR SELECT USING
 -- POLÍTICAS: perfiles
 CREATE POLICY "Users can view their own profile" ON public.perfiles FOR SELECT USING (id = auth.uid());
 CREATE POLICY "Admins can update profiles of their playa" ON public.perfiles FOR UPDATE USING (playa_id = public.get_my_playa_id() AND public.get_my_role() = 'admin');
+
+-- POLÍTICAS: playas
+-- Necesaria para que el TenantService identifique la playa por dominio antes del login
+CREATE POLICY "Public can view playa info by domain" ON public.playas FOR SELECT TO public USING (true);
 
 -- POLÍTICAS: locales
 CREATE POLICY "Users can view locales of their playa" ON public.locales FOR SELECT USING (playa_id = public.get_my_playa_id());

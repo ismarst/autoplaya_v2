@@ -50,7 +50,7 @@
         class="bg-white/5 backdrop-blur-2xl p-10 rounded-[3rem] shadow-2xl w-full max-w-md border border-white/10 relative z-10">
         <div class="text-center mb-10">
             <div class="mb-6 -mx-10 bg-white py-6 flex justify-center items-center shadow-sm">
-                <img src="./img/logo.png" class="h-16 w-auto object-contain" alt="San Juan Automotores">
+                <img id="app-logo" src="./img/logo.png" class="h-16 w-auto object-contain" alt="Logo">
             </div>
             <h1 class="text-2xl font-black text-white tracking-tight uppercase">Acceso a la <span
                     class="text-blue-500">Solución</span></h1>
@@ -89,6 +89,7 @@
         import { supabase } from './js/api/supabase.js';
         import { notifier } from './js/utils/notifier.js';
         import { CONFIG } from './js/config.js';
+        import { tenantService } from './js/api/tenantService.js';
 
         const form = document.getElementById('formLogin');
         const btn = document.getElementById('btnLogin');
@@ -113,7 +114,9 @@
                     .eq('id', data.user.id)
                     .single();
 
-                if (profileError || !perfil || perfil.playa_id !== CONFIG.PLAYA_ID) {
+                const currentPlayaId = tenantService.getPlayaId();
+
+                if (profileError || !perfil || perfil.playa_id !== currentPlayaId) {
                     // Si no pertenece a esta playa, cerramos sesión inmediatamente
                     await supabase.auth.signOut();
                     throw new Error('Credenciales inválidas para este dominio.');
@@ -133,12 +136,32 @@
             }
         };
 
-        // Redirigir si ya existe sesión activa
-        const checkSession = async () => {
+        // Redirigir si ya existe sesión activa + Identificar Inquilino
+        const initLogin = async () => {
+            const config = await tenantService.identify();
+            if (!config) {
+                document.body.innerHTML = `<div class="h-screen flex items-center justify-center bg-slate-900 text-white font-bold p-8 text-center">
+                    <div>
+                        <div class="text-red-500 text-5xl mb-4">⚠️</div>
+                        <h1 class="text-2xl mb-2">Dominio no registrado</h1>
+                        <p class="text-gray-400">Este dominio no está vinculado a ninguna playa de autoPlaya v2.</p>
+                    </div>
+                </div>`;
+                return;
+            }
+
+            // Marca Blanca: Actualizar nombre comercial y LOGO
+            const titleEl = document.querySelector('h1');
+            if (titleEl) titleEl.textContent = config.nombre_comercial;
+
+            const logoEl = document.getElementById('app-logo');
+            if (logoEl && config.logo_url) logoEl.src = config.logo_url;
+
             const { data: { session } } = await supabase.auth.getSession();
             if (session) window.location.href = 'index.html';
         };
-        checkSession();
+
+        initLogin();
     </script>
 </body>
 

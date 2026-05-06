@@ -1,5 +1,5 @@
 import { catalogService } from './catalogService.js';
-import { CONFIG } from '../config.js'; // Importamos la config para el ID por defecto
+import { tenantService } from '../api/tenantService.js';
 
 // Protección XSS: escapa caracteres HTML antes de insertar datos de la DB en el DOM
 const esc = (str) => String(str ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -7,9 +7,9 @@ const esc = (str) => String(str ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt
 /**
  * Lógica de Identificación de Playa:
  * 1. Intenta leer 'playa' de la URL (Ej: catalogo.html?playa=UUID) - Útil para pruebas.
- * 2. Si no hay en URL, usa el PLAYA_ID definido en js/config.js - Útil para dominios propios.
+ * 2. Si no hay en URL, usa el sistema de detección por dominio (Tenant Service).
  */
-const PLAYA_ID = new URLSearchParams(window.location.search).get('playa') || CONFIG.PLAYA_ID;
+let PLAYA_ID = new URLSearchParams(window.location.search).get('playa');
 
 const waNumber = "59599999999"; // TODO: cargar desde playas.configuracion
 const catalogUI = {
@@ -22,6 +22,27 @@ const catalogUI = {
 
     async init() {
         if (window.lucide) lucide.createIcons();
+
+        // Identificación dinámica del inquilino
+        if (!PLAYA_ID) {
+            const config = await tenantService.identify();
+            if (config) {
+                PLAYA_ID = config.id;
+                
+                // Marca Blanca: Actualizar Logo y Nombre en la cabecera del catálogo
+                const logoEl = document.getElementById('app-logo');
+                if (logoEl && config.logo_url) logoEl.src = config.logo_url;
+                
+                const nameEl = document.querySelector('header h1');
+                if (nameEl) nameEl.textContent = config.nombre_comercial;
+            }
+        }
+
+        if (!PLAYA_ID) {
+            document.body.innerHTML = `<div class="h-screen flex items-center justify-center bg-slate-50 text-slate-500 font-bold">Error: Catálogo no vinculado a ninguna playa.</div>`;
+            return;
+        }
+
         this.bindEvents();
         await this.loadMoreVehicles(); // Carga inicial
         this.setupInfiniteScroll();

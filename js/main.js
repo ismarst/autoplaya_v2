@@ -14,6 +14,7 @@ import { collectionsUI } from './collections/collectionsUI.js';
 import { reportsUI } from './reports/reportsUI.js';
 import { historyUI } from './history/historyUI.js';
 import { CONFIG } from './config.js';
+import { tenantService } from './api/tenantService.js';
 
 // --- UTILIDADES GLOBALES DE BÚSQUEDA ---
 const normalizeStr = (str) => {
@@ -74,6 +75,17 @@ async function init() {
     console.log('autoPlaya v2: Inicializando módulo de patio...');
 
     try {
+        // 0. Identificar la Playa actual por Dominio (Tenant Identification)
+        const currentPlaya = await tenantService.identify();
+        if (!currentPlaya) {
+            document.body.innerHTML = `<div class="h-screen flex items-center justify-center bg-slate-50 text-slate-500 font-bold">Error: Dominio no reconocido.</div>`;
+            return;
+        }
+
+        // Marca Blanca: Actualizar Logo en Sidebar
+        const sidebarLogo = document.getElementById('app-logo');
+        if (sidebarLogo && currentPlaya.logo_url) sidebarLogo.src = currentPlaya.logo_url;
+
         // 1. Obtener Sesión (El Auth Guard del index.html ya verificó que existe)
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) return;
@@ -88,7 +100,7 @@ async function init() {
             .eq('id', session.user.id)
             .maybeSingle();
 
-        if (perError || !perfil || perfil.playa_id !== CONFIG.PLAYA_ID) {
+        if (perError || !perfil || perfil.playa_id !== tenantService.getPlayaId()) {
             // Desajuste de inquilino (Tenant Mismatch) - Expulsión forzada
             await supabase.auth.signOut();
             window.location.href = 'login.html';

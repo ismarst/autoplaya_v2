@@ -1,5 +1,6 @@
 import { supabase } from '../api/supabase.js';
-import { CONFIG } from '../config.js'; // <-- Importamos CONFIG directamente
+import { CONFIG } from '../config.js';
+import { tenantService } from '../api/tenantService.js';
 
 export const inventoryService = {
     /**
@@ -11,8 +12,8 @@ export const inventoryService = {
             const from = (page - 1) * pageSize;
             const to = from + pageSize - 1;
 
-            // Usamos el ID del archivo de configuración (infalible para el dominio actual)
-            const playaId = CONFIG.PLAYA_ID;
+            // Usamos el ID identificado por el dominio (SaaS dinámico)
+            const playaId = tenantService.getPlayaId();
 
             let query = supabase
                 .from('vehiculos')
@@ -117,7 +118,7 @@ export const inventoryService = {
                 .from('vehiculos')
                 .update(updatedData)
                 .eq('id', id)
-                .eq('playa_id', CONFIG.PLAYA_ID) // BLINDAJE
+                .eq('playa_id', tenantService.getPlayaId()) // BLINDAJE DINÁMICO
                 .select();
 
             if (error) throw error;
@@ -147,7 +148,7 @@ export const inventoryService = {
                 .from('vehiculos')
                 .select('fotos')
                 .eq('id', id)
-                .eq('playa_id', CONFIG.PLAYA_ID) // BLINDAJE
+                .eq('playa_id', tenantService.getPlayaId()) // BLINDAJE DINÁMICO
                 .single();
 
             if (fetchError) throw fetchError;
@@ -245,7 +246,7 @@ export const inventoryService = {
             const { data, error } = await supabase
                 .from('locales')
                 .select('*')
-                .eq('playa_id', CONFIG.PLAYA_ID) // <-- BLINDAJE MULTITENANT
+                .eq('playa_id', tenantService.getPlayaId()) // <-- BLINDAJE DINÁMICO
                 .is('deleted_at', null)
                 .order('nombre', { ascending: true });
 
@@ -277,7 +278,7 @@ export const inventoryService = {
                 .from('locales')
                 .update(localData)
                 .eq('id', id)
-                .eq('playa_id', CONFIG.PLAYA_ID) // CANDADO EXTRA
+                .eq('playa_id', tenantService.getPlayaId()) // CANDADO DINÁMICO
                 .select();
             if (error) throw error;
             return data[0];
@@ -294,7 +295,7 @@ export const inventoryService = {
                 .from('locales')
                 .update({ deleted_at: new Date().toISOString() })
                 .eq('id', id)
-                .eq('playa_id', CONFIG.PLAYA_ID); // CANDADO EXTRA
+                .eq('playa_id', tenantService.getPlayaId()); // CANDADO DINÁMICO
             if (error) throw error;
             return true;
         } catch (error) {
