@@ -1,4 +1,5 @@
 import { supabase } from '../api/supabase.js';
+import { CONFIG } from '../config.js'; // <-- Importamos CONFIG directamente
 
 export const inventoryService = {
     /**
@@ -10,12 +11,16 @@ export const inventoryService = {
             const from = (page - 1) * pageSize;
             const to = from + pageSize - 1;
 
+            // Usamos el ID del archivo de configuración (infalible para el dominio actual)
+            const playaId = CONFIG.PLAYA_ID;
+
             let query = supabase
                 .from('vehiculos')
                 .select(`
                     *,
                     locales (nombre)
                 `, { count: 'exact' })
+                .eq('playa_id', playaId) // <-- FILTRO DE HIERRO
                 .is('deleted_at', null)
                 .neq('estado', 'vendido')
                 .order('created_at', { ascending: false });
@@ -112,6 +117,7 @@ export const inventoryService = {
                 .from('vehiculos')
                 .update(updatedData)
                 .eq('id', id)
+                .eq('playa_id', CONFIG.PLAYA_ID) // BLINDAJE
                 .select();
 
             if (error) throw error;
@@ -141,6 +147,7 @@ export const inventoryService = {
                 .from('vehiculos')
                 .select('fotos')
                 .eq('id', id)
+                .eq('playa_id', CONFIG.PLAYA_ID) // BLINDAJE
                 .single();
 
             if (fetchError) throw fetchError;
@@ -238,6 +245,7 @@ export const inventoryService = {
             const { data, error } = await supabase
                 .from('locales')
                 .select('*')
+                .eq('playa_id', CONFIG.PLAYA_ID) // <-- BLINDAJE MULTITENANT
                 .is('deleted_at', null)
                 .order('nombre', { ascending: true });
 
@@ -269,6 +277,7 @@ export const inventoryService = {
                 .from('locales')
                 .update(localData)
                 .eq('id', id)
+                .eq('playa_id', CONFIG.PLAYA_ID) // CANDADO EXTRA
                 .select();
             if (error) throw error;
             return data[0];
@@ -284,7 +293,8 @@ export const inventoryService = {
             const { error } = await supabase
                 .from('locales')
                 .update({ deleted_at: new Date().toISOString() })
-                .eq('id', id);
+                .eq('id', id)
+                .eq('playa_id', CONFIG.PLAYA_ID); // CANDADO EXTRA
             if (error) throw error;
             return true;
         } catch (error) {

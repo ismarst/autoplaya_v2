@@ -230,17 +230,17 @@ ALTER TABLE public.pagos ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Users can view their own playa" ON public.playas FOR SELECT USING (id = public.get_my_playa_id());
 
 -- POLÍTICAS: perfiles
-CREATE POLICY "Users can view profiles of their playa" ON public.perfiles FOR SELECT USING (playa_id = public.get_my_playa_id());
+CREATE POLICY "Users can view their own profile" ON public.perfiles FOR SELECT USING (id = auth.uid());
 CREATE POLICY "Admins can update profiles of their playa" ON public.perfiles FOR UPDATE USING (playa_id = public.get_my_playa_id() AND public.get_my_role() = 'admin');
 
 -- POLÍTICAS: locales
 CREATE POLICY "Users can view locales of their playa" ON public.locales FOR SELECT USING (playa_id = public.get_my_playa_id());
 CREATE POLICY "Admins can manage locales" ON public.locales FOR ALL USING (playa_id = public.get_my_playa_id() AND public.get_my_role() = 'admin');
-CREATE POLICY "Public can view locales" ON public.locales FOR SELECT TO public USING (deleted_at IS NULL);
+CREATE POLICY "Public can view locales" ON public.locales FOR SELECT TO anon USING (deleted_at IS NULL);
 
 -- POLÍTICAS: vehiculos
 CREATE POLICY "Users can view/manage vehicles of their playa" ON public.vehiculos FOR ALL USING (playa_id = public.get_my_playa_id());
-CREATE POLICY "Public can view catalog vehicles" ON public.vehiculos FOR SELECT TO public USING (deleted_at IS NULL AND estado != 'vendido');
+CREATE POLICY "Public can view catalog vehicles" ON public.vehiculos FOR SELECT TO anon USING (deleted_at IS NULL AND estado != 'vendido');
 
 -- POLÍTICAS: clientes
 CREATE POLICY "Users can view/manage clientes of their playa" ON public.clientes FOR ALL USING (playa_id = public.get_my_playa_id());
@@ -289,3 +289,22 @@ CREATE INDEX IF NOT EXISTS idx_clientes_playa
 -- Locales activos por playa
 CREATE INDEX IF NOT EXISTS idx_locales_playa
     ON public.locales(playa_id) WHERE deleted_at IS NULL;
+
+-- 8. SEGURIDAD DE STORAGE (FOTOS)
+-- Configuración de políticas para el bucket 'fotos_vehiculos'
+-- Nota: El bucket debe crearse manualmente como público en el Dashboard de Supabase.
+
+-- Permitir acceso público de lectura a todas las fotos
+CREATE POLICY "Fotos son públicas" ON storage.objects FOR SELECT USING (bucket_id = 'fotos_vehiculos');
+
+-- Permitir subir fotos solo a la carpeta correspondiente al playa_id del usuario
+CREATE POLICY "Usuarios suben fotos a su propia carpeta" ON storage.objects FOR INSERT WITH CHECK (
+    bucket_id = 'fotos_vehiculos' AND 
+    (storage.foldername(name))[1] = (SELECT playa_id::text FROM public.perfiles WHERE id = auth.uid())
+);
+
+-- Permitir borrar fotos solo de su propia carpeta
+CREATE POLICY "Usuarios borran sus propias fotos" ON storage.objects FOR DELETE USING (
+    bucket_id = 'fotos_vehiculos' AND 
+    (storage.foldername(name))[1] = (SELECT playa_id::text FROM public.perfiles WHERE id = auth.uid())
+);

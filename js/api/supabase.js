@@ -1,8 +1,8 @@
 // js/api/supabase.js
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
-import { SUPABASE_CONFIG } from '../config.js' // <-- Los dos puntos (../) suben un nivel a la carpeta 'js/'
+import { CONFIG } from '../config.js'
 
 export const supabase = createClient(
-    SUPABASE_CONFIG.URL,
-    SUPABASE_CONFIG.ANON_KEY
+    CONFIG.URL,
+    CONFIG.ANON_KEY
 )

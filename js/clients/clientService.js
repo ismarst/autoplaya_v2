@@ -1,4 +1,5 @@
 import { supabase } from '../api/supabase.js';
+import { CONFIG } from '../config.js';
 
 export const clientService = {
     async getClients({ searchTerm = '' } = {}) {
@@ -6,6 +7,7 @@ export const clientService = {
             let query = supabase
                 .from('clientes')
                 .select('*')
+                .eq('playa_id', CONFIG.PLAYA_ID) // <-- BLINDAJE MULTITENANT
                 .is('deleted_at', null)
                 .order('nombre', { ascending: true });
 
@@ -45,6 +47,7 @@ export const clientService = {
                 .from('clientes')
                 .update(clientData)
                 .eq('id', id)
+                .eq('playa_id', CONFIG.PLAYA_ID) // BLINDAJE
                 .select()
                 .single();
 
@@ -61,7 +64,8 @@ export const clientService = {
             const { error } = await supabase
                 .from('clientes')
                 .update({ deleted_at: new Date().toISOString() })
-                .eq('id', id);
+                .eq('id', id)
+                .eq('playa_id', CONFIG.PLAYA_ID); // BLINDAJE
 
             if (error) throw error;
             return true;

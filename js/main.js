@@ -13,6 +13,7 @@ import { formatDate } from './utils/dateFormatter.js';
 import { collectionsUI } from './collections/collectionsUI.js';
 import { reportsUI } from './reports/reportsUI.js';
 import { historyUI } from './history/historyUI.js';
+import { CONFIG } from './config.js';
 
 // --- UTILIDADES GLOBALES DE BÚSQUEDA ---
 const normalizeStr = (str) => {
@@ -87,8 +88,10 @@ async function init() {
             .eq('id', session.user.id)
             .maybeSingle();
 
-        if (perError || !perfil) {
-            notifier.showToast('Error al cargar perfil.', 'error');
+        if (perError || !perfil || perfil.playa_id !== CONFIG.PLAYA_ID) {
+            // Desajuste de inquilino (Tenant Mismatch) - Expulsión forzada
+            await supabase.auth.signOut();
+            window.location.href = 'login.html';
             return;
         }
 

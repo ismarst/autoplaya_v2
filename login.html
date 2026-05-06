@@ -88,6 +88,7 @@
     <script type="module">
         import { supabase } from './js/api/supabase.js';
         import { notifier } from './js/utils/notifier.js';
+        import { CONFIG } from './js/config.js';
 
         const form = document.getElementById('formLogin');
         const btn = document.getElementById('btnLogin');
@@ -101,12 +102,32 @@
             btn.innerHTML = `<svg class="animate-spin h-5 w-5 mr-3 border-4 border-white border-t-transparent rounded-full" viewBox="0 0 24 24"></svg> Verificando...`;
 
             try {
-                const { error } = await supabase.auth.signInWithPassword({ email, password });
-                if (error) throw error;
+                // 1. Intentar Login
+                const { data, error: authError } = await supabase.auth.signInWithPassword({ email, password });
+                if (authError) throw authError;
+
+                // 2. Verificar pertenencia a la Playa (Tenant Check)
+                const { data: perfil, error: profileError } = await supabase
+                    .from('perfiles')
+                    .select('playa_id')
+                    .eq('id', data.user.id)
+                    .single();
+
+                if (profileError || !perfil || perfil.playa_id !== CONFIG.PLAYA_ID) {
+                    // Si no pertenece a esta playa, cerramos sesión inmediatamente
+                    await supabase.auth.signOut();
+                    throw new Error('Credenciales inválidas para este dominio.');
+                }
+
                 notifier.showToast('¡Bienvenido a la Solución!');
                 setTimeout(() => window.location.href = 'index.html', 800);
             } catch (error) {
-                notifier.showToast('Error de acceso: ' + error.message, 'error');
+                // Mensaje genérico para no dar pistas a atacantes
+                const msg = error.message === 'Credenciales inválidas para este dominio.' 
+                    ? 'Error de acceso: Usuario o contraseña incorrectos' 
+                    : 'Error de acceso: ' + error.message;
+                
+                notifier.showToast(msg, 'error');
                 btn.disabled = false;
                 btn.innerHTML = `<span>Acceder al Panel</span> <span class="text-xl">→</span>`;
             }

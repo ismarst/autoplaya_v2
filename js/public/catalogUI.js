@@ -1,5 +1,5 @@
 import { catalogService } from './catalogService.js';
-import { SUPABASE_CONFIG } from '../config.js'; // Importamos la config para el ID por defecto
+import { CONFIG } from '../config.js'; // Importamos la config para el ID por defecto
 
 // Protección XSS: escapa caracteres HTML antes de insertar datos de la DB en el DOM
 const esc = (str) => String(str ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -9,7 +9,7 @@ const esc = (str) => String(str ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt
  * 1. Intenta leer 'playa' de la URL (Ej: catalogo.html?playa=UUID) - Útil para pruebas.
  * 2. Si no hay en URL, usa el PLAYA_ID definido en js/config.js - Útil para dominios propios.
  */
-const PLAYA_ID = new URLSearchParams(window.location.search).get('playa') || SUPABASE_CONFIG.PLAYA_ID;
+const PLAYA_ID = new URLSearchParams(window.location.search).get('playa') || CONFIG.PLAYA_ID;
 
 const waNumber = "59599999999"; // TODO: cargar desde playas.configuracion
 const catalogUI = {
