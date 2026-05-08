@@ -1,3 +1,5 @@
+import { notifier } from '../utils/notifier.js';
+
 export const adminUI = {
     /**
      * Renderiza la tabla de locales.
@@ -100,9 +102,9 @@ export const adminUI = {
         });
 
         container.querySelectorAll('.btn-delete-local').forEach(btn => {
-            btn.onclick = () => {
+            btn.onclick = async () => {
                 const id = btn.getAttribute('data-id');
-                if (confirm('¿Estás seguro de eliminar este local?')) {
+                if (await notifier.confirm('Eliminar Local', '¿Estás seguro de eliminar esta sucursal? Esta acción es irreversible.')) {
                     onDelete(id);
                 }
             };

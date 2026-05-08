@@ -795,7 +795,7 @@ async function init() {
                 if (tipoVenta === 'financiado' && cantCuotas < 1) return notifier.showToast('Ingrese la cantidad de cuotas (mínimo 1)', 'error');
                 if (tipoVenta === 'financiado' && entregaVenta >= totalVenta) return notifier.showToast('La entrega inicial no puede igualar o superar el total', 'error');
 
-                if (!confirm('¿CONFIRMAR VENTA? Esta acción es irreversible.')) return;
+                if (!(await notifier.confirm('Confirmar Venta', '¿Deseas finalizar esta operación? Esta acción es irreversible.', { type: 'success', okText: '¡Finalizar Venta!' }))) return;
 
                 salesUI.setButtonLoading('btnFinalizeSale', true);
 
@@ -1008,4 +1008,38 @@ async function init() {
     } catch (error) { console.error(error); }
 }
 
-document.addEventListener('DOMContentLoaded', init);
+// --- 1. Traductor Global de Validaciones (Cero Inglés y UX Premium) ---
+let validationTimeout = null;
+
+document.addEventListener('invalid', (e) => {
+    e.preventDefault(); // Bloqueamos el globo nativo feo
+    const target = e.target;
+
+    // Resaltar el campo infractor visualmente
+    target.classList.add('ring-2', 'ring-rose-500', 'border-rose-500', 'bg-rose-50', 'transition-all');
+
+    // Limpiar el resaltado apenas el usuario empiece a corregirlo
+    const removeHighlight = () => {
+        target.classList.remove('ring-2', 'ring-rose-500', 'border-rose-500', 'bg-rose-50');
+        target.removeEventListener('input', removeHighlight);
+        target.removeEventListener('change', removeHighlight);
+    };
+    target.addEventListener('input', removeHighlight);
+    target.addEventListener('change', removeHighlight);
+
+    // Agrupar múltiples errores (que ocurren a la vez al hacer submit) en un solo Toast
+    if (!validationTimeout) {
+        notifier.showToast('Por favor, completa los campos obligatorios (*) resaltados en rojo', 'error');
+        target.focus(); // Hacemos focus solo al primer elemento que falló
+        
+        validationTimeout = setTimeout(() => {
+            validationTimeout = null;
+        }, 100); // 100ms de gracia para ignorar el resto del lote
+    }
+}, true);
+
+// --- 2. Inicialización General ---
+document.addEventListener('DOMContentLoaded', async () => {
+    document.documentElement.setAttribute('lang', 'es');
+    await init();
+});

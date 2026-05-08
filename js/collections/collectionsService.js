@@ -158,6 +158,18 @@ export const collectionsService = {
     async _generateReceiptNumber(playaId) {
         const { data, error } = await supabase.rpc('increment_receipt', { p_id: playaId });
         if (error) throw new Error('No se pudo generar el número de recibo: ' + error.message);
+        
+        // Auto-Sanador: Si no hay datos, es la primera venta de una SUCURSAL NUEVA.
+        if (data === null || data === undefined) {
+            console.log('Inicializando nueva caja para la sucursal:', playaId);
+            const { error: insertError } = await supabase
+                .from('configuracion_caja')
+                .insert([{ playa_id: playaId, ultimo_nro_recibo: 1 }]);
+                
+            if (insertError) throw new Error('No se pudo inicializar la caja: ' + insertError.message);
+            return 1;
+        }
+
         return data;
     },
 

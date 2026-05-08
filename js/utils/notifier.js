@@ -64,25 +64,41 @@ export const notifier = {
     },
 
     /**
-     * Reemplazo estético de window.confirm()
+     * Reemplazo estético y dinámico de window.confirm()
      * @param {string} title - Título del modal.
      * @param {string} message - Mensaje informativo.
-     * @returns {Promise<boolean>} - Resuelve true si el usuario confirma.
+     * @param {Object} options - Configuración de estilo y botones.
      */
-    async confirm(title, message) {
+    async confirm(title, message, options = {}) {
+        const {
+            okText = 'Confirmar',
+            cancelText = 'Cancelar',
+            type = 'danger' // danger, success, info
+        } = options;
+
+        const config = {
+            danger: { btn: 'bg-rose-600 hover:bg-rose-700 shadow-rose-600/20', icon: '🗑️', iconBg: 'bg-rose-50 text-rose-600' },
+            success: { btn: 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/20', icon: '💰', iconBg: 'bg-emerald-50 text-emerald-600' },
+            info: { btn: 'bg-blue-600 hover:bg-blue-700 shadow-blue-600/20', icon: 'ℹ️', iconBg: 'bg-blue-50 text-blue-600' }
+        };
+
+        const theme = config[type] || config.danger;
+
         return new Promise((resolve) => {
             const modal = document.createElement('div');
-            modal.className = 'fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200';
+            modal.className = 'fixed inset-0 z-[110] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-in fade-in duration-300';
             modal.innerHTML = `
-                <div class="bg-white w-full max-w-sm rounded-[2rem] shadow-2xl overflow-hidden p-8 animate-in zoom-in-95 duration-200">
+                <div class="bg-white w-full max-w-sm rounded-[2.5rem] shadow-2xl overflow-hidden p-10 animate-in zoom-in-95 duration-300 border border-slate-100">
                     <div class="text-center">
-                        <div class="w-16 h-16 bg-red-50 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4 text-3xl">🗑️</div>
-                        <h3 class="text-xl font-black text-gray-900 mb-2">${title}</h3>
-                        <p class="text-gray-500 text-sm font-medium leading-relaxed mb-8">${message}</p>
+                        <div class="w-20 h-20 ${theme.iconBg} rounded-3xl flex items-center justify-center mx-auto mb-6 text-4xl shadow-inner">
+                            ${theme.icon}
+                        </div>
+                        <h3 class="text-2xl font-black text-slate-900 mb-3 tracking-tighter">${title}</h3>
+                        <p class="text-slate-500 text-sm font-bold uppercase tracking-widest leading-relaxed mb-10 opacity-70 px-4">${message}</p>
                     </div>
-                    <div class="flex gap-3">
-                        <button id="confirmCancel" class="flex-1 px-6 py-4 bg-gray-100 text-gray-600 font-bold rounded-2xl hover:bg-gray-200 transition">Cancelar</button>
-                        <button id="confirmOk" class="flex-1 px-6 py-4 bg-red-600 text-white font-bold rounded-2xl hover:bg-red-700 shadow-lg shadow-red-600/20 transition">Eliminar</button>
+                    <div class="flex flex-col sm:flex-row gap-3">
+                        <button id="confirmCancel" class="flex-1 px-6 py-5 bg-slate-100 text-slate-600 font-black uppercase text-[10px] tracking-[0.2em] rounded-2xl hover:bg-slate-200 transition-all active:scale-95 order-2 sm:order-1">${cancelText}</button>
+                        <button id="confirmOk" class="flex-1 px-6 py-5 ${theme.btn} text-white font-black uppercase text-[10px] tracking-[0.2em] rounded-2xl shadow-xl transition-all active:scale-95 order-1 sm:order-2">${okText}</button>
                     </div>
                 </div>
             `;
@@ -90,8 +106,7 @@ export const notifier = {
             document.body.appendChild(modal);
 
             const cleanup = (val) => {
-                modal.classList.add('fade-out');
-                modal.querySelector('div').classList.add('zoom-out-95');
+                modal.classList.add('animate-out', 'fade-out', 'duration-200');
                 setTimeout(() => {
                     modal.remove();
                     resolve(val);
