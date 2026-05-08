@@ -11,9 +11,10 @@ const esc = (str) => String(str ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt
  */
 let PLAYA_ID = new URLSearchParams(window.location.search).get('playa');
 
-const waNumber = "59599999999"; // TODO: cargar desde playas.configuracion
 const catalogUI = {
-    allVehicles: [], // Vehículos CARGADOS ACTUALMENTE
+    allVehicles: [],
+    locales: [],
+    currentLocalId: 'all',
     currentPage: 1,
     pageSize: 6,
     isLoading: false,
@@ -29,37 +30,148 @@ const catalogUI = {
             if (config) {
                 PLAYA_ID = config.id;
                 
-                // Marca Blanca: Actualizar Logo y Nombre en la cabecera del catálogo
+                // Marca Blanca: Actualizar Logo en la cabecera
                 const logoEl = document.getElementById('app-logo');
-                if (logoEl && config.logo_url) logoEl.src = config.logo_url;
-                
-                const nameEl = document.querySelector('header h1');
-                if (nameEl) nameEl.textContent = config.nombre_comercial;
+                if (logoEl && config.logo_url) {
+                    logoEl.src = config.logo_url;
+                    logoEl.classList.remove('opacity-0');
+                }
             }
         }
 
         if (!PLAYA_ID) {
-            document.body.innerHTML = `<div class="h-screen flex items-center justify-center bg-slate-50 text-slate-500 font-bold">Error: Catálogo no vinculado a ninguna playa.</div>`;
+            document.body.innerHTML = `<div class="h-screen flex items-center justify-center bg-slate-50 text-slate-500 font-bold text-center p-10">Error: Catálogo no vinculado a ninguna playa comercial.</div>`;
             return;
         }
 
+        // Cargar Locales/Sucursales
+        try {
+            this.locales = await catalogService.getPublicLocales(PLAYA_ID);
+            this.renderBranchOptions();
+            this.updateBranchUI(); // Carga inicial de info de contacto
+        } catch (error) {
+            console.error("Error al cargar sucursales:", error);
+        }
+
         this.bindEvents();
-        await this.loadMoreVehicles(); // Carga inicial
+        await this.loadMoreVehicles(); // Carga inicial de inventario
         this.setupInfiniteScroll();
+    },
+
+    renderBranchOptions() {
+        const select = document.getElementById('branchSelect');
+        if (!select) return;
+        
+        const options = this.locales.map(l => `<option value="${l.id}">${esc(l.nombre)} - ${esc(l.ciudad)}</option>`).join('');
+        select.innerHTML = `<option value="all">📍 Todos los locales</option>` + options;
+    },
+
+    /**
+     * Actualiza el footer según la sucursal seleccionada.
+     * Si es "all", muestra un listado de todas las sucursales.
+     */
+    updateBranchUI() {
+        const container = document.getElementById('footerBranchesContainer');
+        if (!container) return;
+
+        // Limpiar contenedor
+        container.innerHTML = '';
+
+        // Determinar qué locales mostrar en el footer
+        const branchesToShow = this.currentLocalId === 'all' ? this.locales : this.locales.filter(l => l.id === this.currentLocalId);
+
+        // 1. WhatsApp del Header (Siempre usa el de la primera sucursal si está en "Todos")
+        const headerWA = document.querySelector('header a[href*="wa.me"]');
+        const mainLocal = this.currentLocalId === 'all' ? this.locales[0] : this.locales.find(l => l.id === this.currentLocalId);
+        if (headerWA) {
+            headerWA.href = mainLocal?.telefono ? `https://wa.me/${mainLocal.telefono.replace(/\D/g, '')}` : "#";
+        }
+
+        // 2. Renderizar cada sucursal en el Footer
+        branchesToShow.forEach((local, index) => {
+            const phone = local.telefono || "Sin teléfono";
+            const waLink = local.telefono ? `https://wa.me/${local.telefono.replace(/\D/g, '')}` : "#";
+            
+            const localHtml = `
+                <div class="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 ${index > 0 ? 'pt-10 border-t border-slate-50' : ''}">
+                    ${this.currentLocalId === 'all' ? `
+                        <div class="flex items-center gap-2 mb-2">
+                            <span class="w-1.5 h-1.5 rounded-full bg-blue-600"></span>
+                            <h4 class="text-xs font-black text-blue-600 uppercase tracking-[0.2em]">${esc(local.nombre)}</h4>
+                        </div>
+                    ` : ''}
+                    
+                    <div class="space-y-4">
+                        <div class="flex items-start gap-4">
+                            <div class="w-10 h-10 rounded-2xl bg-blue-50 flex items-center justify-center text-blue-600">
+                                <i data-lucide="map-pin" class="w-5 h-5"></i>
+                            </div>
+                            <div>
+                                <p class="text-[10px] font-black uppercase text-slate-400 tracking-widest leading-none mb-1">Ubicación</p>
+                                <p class="text-sm font-bold text-slate-700 uppercase">${esc(local.direccion || 'Dirección no especificada')} (${esc(local.ciudad)})</p>
+                            </div>
+                        </div>
+
+                        <a href="${waLink}" target="_blank" class="flex items-center gap-4 group transition-transform active:scale-95">
+                            <div class="w-10 h-10 rounded-2xl bg-green-50 flex items-center justify-center text-green-600 transition-colors group-hover:bg-green-100">
+                                <img src="./img/whatsapp.svg" class="w-6 h-6" alt="WA">
+                            </div>
+                            <div>
+                                <p class="text-[10px] font-black uppercase text-slate-400 tracking-widest leading-none mb-1">Ventas & Consultas</p>
+                                <p class="text-sm font-bold text-slate-700">${phone}</p>
+                            </div>
+                        </a>
+
+                        <div class="flex items-center gap-4">
+                            <div class="w-10 h-10 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-500">
+                                <i data-lucide="clock" class="w-5 h-5"></i>
+                            </div>
+                            <div>
+                                <p class="text-[10px] font-black uppercase text-slate-400 tracking-widest leading-none mb-1">Horarios</p>
+                                <p class="text-sm font-bold text-slate-700 uppercase">${esc(local.horario || 'Consultar horarios')}</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    ${local.maps_url ? `
+                        <div class="pt-2">
+                            <a href="${local.maps_url}" target="_blank" class="w-full bg-slate-900 text-white font-black py-4 rounded-2xl flex items-center justify-center gap-3 shadow-xl shadow-slate-900/20 transition-all active:scale-95">
+                                <i data-lucide="map" class="w-5 h-5"></i>
+                                <span class="text-xs uppercase tracking-widest">Ver en Google Maps</span>
+                            </a>
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+            container.insertAdjacentHTML('beforeend', localHtml);
+        });
+
+        if (window.lucide) lucide.createIcons();
     },
 
     bindEvents() {
         const searchInput = document.getElementById('searchInput');
+        const branchSelect = document.getElementById('branchSelect');
         let timeout = null;
         
         searchInput.addEventListener('input', (e) => {
             clearTimeout(timeout);
             timeout = setTimeout(async () => {
                 this.searchTerm = e.target.value;
-                this.resetCatalog(); // Al buscar de cero, reseteamos todo
+                this.resetCatalog();
                 await this.loadMoreVehicles();
-            }, 300); // Debounce
+            }, 300);
         });
+
+        // Evento Cambio de Sucursal
+        if (branchSelect) {
+            branchSelect.addEventListener('change', async (e) => {
+                this.currentLocalId = e.target.value;
+                this.updateBranchUI();
+                this.resetCatalog();
+                await this.loadMoreVehicles();
+            });
+        }
 
         // Eventos del Modal
         document.getElementById('modalBackdrop').addEventListener('click', () => this.closeModal());
@@ -69,8 +181,6 @@ const catalogUI = {
     setupInfiniteScroll() {
         window.addEventListener('scroll', () => {
             if (this.isLoading || !this.hasMore) return;
-
-            // Detectar si estamos cerca del final (100px antes)
             if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight - 400) {
                 this.loadMoreVehicles();
             }
@@ -81,7 +191,7 @@ const catalogUI = {
         this.allVehicles = [];
         this.currentPage = 1;
         this.hasMore = true;
-        document.getElementById('catalogGrid').innerHTML = ''; // Limpiar grilla
+        document.getElementById('catalogGrid').innerHTML = '';
     },
 
     async loadMoreVehicles() {
@@ -95,11 +205,12 @@ const catalogUI = {
                 searchTerm: this.searchTerm, 
                 page: this.currentPage, 
                 pageSize: this.pageSize,
-                playaId: PLAYA_ID
+                playaId: PLAYA_ID,
+                localId: this.currentLocalId
             });
 
             if (newVehicles.length < this.pageSize) {
-                this.hasMore = false; // Ya no hay más para cargar
+                this.hasMore = false;
             }
 
             this.allVehicles = [...this.allVehicles, ...newVehicles];
@@ -110,7 +221,7 @@ const catalogUI = {
         } catch (error) {
             console.error('Error cargando vehículos:', error);
             if (this.allVehicles.length === 0) {
-                document.getElementById('catalogGrid').innerHTML = `<div class="col-span-full py-10 text-center text-rose-500 font-bold text-sm">Error al cargar el catálogo.</div>`;
+                document.getElementById('catalogGrid').innerHTML = `<div class="col-span-full py-10 text-center text-rose-500 font-bold text-xs uppercase tracking-widest">No se encontraron vehículos en esta sucursal.</div>`;
             }
         } finally {
             this.isLoading = false;
@@ -294,10 +405,26 @@ const catalogUI = {
         `;
     },
 
+    /**
+     * Resuelve el mejor número de WhatsApp para contactar por un vehículo.
+     * Prioridad: 1. Sucursal del vehículo, 2. Sucursal seleccionada, 3. Primera sucursal de la playa.
+     */
+    getWhatsAppNumber(vehicle) {
+        if (vehicle.locales?.telefono) return vehicle.locales.telefono.replace(/\D/g, '');
+        
+        const currentLocal = this.currentLocalId === 'all' ? this.locales[0] : this.locales.find(l => l.id === this.currentLocalId);
+        if (currentLocal?.telefono) return currentLocal.telefono.replace(/\D/g, '');
+        
+        if (this.locales[0]?.telefono) return this.locales[0].telefono.replace(/\D/g, '');
+        
+        return "595981222333"; // Fallback final
+    },
+
     getWhatsAppButtonSmall(vehicle) {
+        const phone = this.getWhatsAppNumber(vehicle);
         const text = encodeURIComponent(`Hola! Vengo del catálogo web. Me interesa este vehículo:\n*${vehicle.marca} ${vehicle.modelo} ${vehicle.anho}*\n(Ref/Stock: #${vehicle.nro_stock ? vehicle.nro_stock.toString().padStart(5, '0') : 'S/D'})`);
         return `
-            <a href="https://wa.me/${waNumber}?text=${text}" target="_blank" 
+            <a href="https://wa.me/${phone}?text=${text}" target="_blank" 
                class="active:scale-[0.9] transition-transform flex justify-center items-center">
                 <img src="./img/whatsapp.svg" alt="WA" class="w-10 h-10">
             </a>
@@ -305,9 +432,10 @@ const catalogUI = {
     },
 
     getWhatsAppButtonLarge(vehicle) {
+        const phone = this.getWhatsAppNumber(vehicle);
         const text = encodeURIComponent(`Hola! Vengo del catálogo web. Me interesa este vehículo:\n*${vehicle.marca} ${vehicle.modelo} ${vehicle.anho}*\n(Ref/Stock: #${vehicle.nro_stock ? vehicle.nro_stock.toString().padStart(5, '0') : 'S/D'})\n\nMe gustaría recibir más información.`);
         return `
-            <a href="https://wa.me/${waNumber}?text=${text}" target="_blank" 
+            <a href="https://wa.me/${phone}?text=${text}" target="_blank" 
                class="w-full bg-[#25D366] text-white py-4 rounded-2xl flex items-center justify-center gap-3 font-black text-[11px] uppercase tracking-widest shadow-xl shadow-green-500/30 active:scale-[0.98] transition-all">
                 <img src="./img/whatsapp.svg" alt="WA" class="w-6 h-6">
                 Contactar a un Asesor

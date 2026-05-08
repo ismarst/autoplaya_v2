@@ -6,7 +6,7 @@ export const catalogService = {
      * El playaId viene de la URL (?playa=UUID) y filtra los resultados por tenant.
      * La anon key de Supabase es pública por diseño; la seguridad real está en RLS.
      */
-    async getPublicInventory({ searchTerm = '', page = 1, pageSize = 6, playaId = null } = {}) {
+    async getPublicInventory({ searchTerm = '', page = 1, pageSize = 6, playaId = null, localId = null } = {}) {
         try {
             const from = (page - 1) * pageSize;
             const to = from + pageSize - 1;
@@ -15,20 +15,23 @@ export const catalogService = {
                 .from('vehiculos')
                 .select(`
                     *,
-                    locales (nombre)
+                    locales (*)
                 `)
                 .is('deleted_at', null)
                 .neq('estado', 'vendido')
                 .order('created_at', { ascending: false })
                 .range(from, to);
 
-            // Filtro por tenant: solo muestra vehículos de la playa indicada en la URL.
-            // Si no se pasa playaId, el catálogo no devuelve resultados (protección multiclient).
+            // Filtro por tenant
             if (playaId) {
                 query = query.eq('playa_id', playaId);
             } else {
-                // Sin playa_id en URL, devuelve array vacío en lugar de mezclar tenants
                 return [];
+            }
+
+            // Filtro por sucursal específica
+            if (localId && localId !== 'all') {
+                query = query.eq('local_id', localId);
             }
 
             if (searchTerm) {
@@ -52,11 +55,29 @@ export const catalogService = {
             }
 
             const { data, error } = await query;
-
             if (error) throw error;
             return data;
         } catch (error) {
             console.error('Error en getPublicInventory:', error.message);
+            throw error;
+        }
+    },
+
+    /**
+     * Obtiene los locales públicos de la playa actual.
+     */
+    async getPublicLocales(playaId) {
+        try {
+            const { data, error } = await supabase
+                .from('locales')
+                .select('*')
+                .eq('playa_id', playaId)
+                .is('deleted_at', null)
+                .order('nombre', { ascending: true });
+            if (error) throw error;
+            return data;
+        } catch (error) {
+            console.error('Error en getPublicLocales:', error.message);
             throw error;
         }
     }

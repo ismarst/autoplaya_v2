@@ -5,39 +5,52 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Catálogo de Vehículos | autoPlaya</title>
-    
+
     <!-- CSS y Config Tailwind -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap"
+        rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
             theme: { extend: { fontFamily: { sans: ['Inter', 'sans-serif'], } } }
         }
     </script>
-    
+
     <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
-    
+
     <style>
-        body { font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
-        
+        body {
+            font-family: 'Inter', sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+
         /* Ocultar barra de scroll en contenedores específicos */
-        .no-scrollbar::-webkit-scrollbar { display: none; }
-        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-        
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+
         /* Animaciones para el Modal Tipo App */
         .bottom-sheet {
             transform: translateY(100%);
             transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
         }
+
         .bottom-sheet.open {
             transform: translateY(0);
         }
+
         .backdrop {
             opacity: 0;
             pointer-events: none;
             transition: opacity 0.3s ease;
         }
+
         .backdrop.open {
             opacity: 1;
             pointer-events: auto;
@@ -46,26 +59,43 @@
 </head>
 
 <body class="bg-slate-50 min-h-screen pb-20">
-    
+
     <!-- Header Fijo -->
     <header class="sticky top-0 z-40 bg-white shadow-sm border-b border-slate-100 px-4 py-3">
         <div class="relative flex items-center justify-center mb-4 min-h-[48px]">
             <!-- Logotipo Centrado y más grande -->
-            <img id="app-logo" src="./img/logo.png" alt="Logo" class="h-12 object-contain">
-            
+            <img id="app-logo" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="Logo" class="h-12 object-contain opacity-0 transition-opacity duration-300">
+
             <!-- Botón WhatsApp a la derecha -->
-            <a href="https://wa.me/59599999999" target="_blank" class="absolute right-0 p-1 focus:outline-none active:scale-95 flex items-center justify-center">
+            <a href="https://wa.me/59599999999" target="_blank"
+                class="absolute right-0 p-1 focus:outline-none active:scale-95 flex items-center justify-center">
                 <img src="./img/whatsapp.svg" alt="WhatsApp" class="w-10 h-10">
             </a>
         </div>
-        
+
         <!-- Buscador -->
         <div class="relative w-full">
-            <input type="text" id="searchInput" placeholder="Ingrese modelo, marca o año..." 
-                   class="w-full pl-10 pr-4 py-3 bg-slate-100/80 border-transparent rounded-2xl focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all text-xs font-bold text-slate-700 placeholder:text-slate-400">
+            <input type="text" id="searchInput" placeholder="Ingrese modelo, marca o año..."
+                class="w-full pl-10 pr-4 py-3 bg-slate-100/80 border-transparent rounded-2xl focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all text-xs font-bold text-slate-700 placeholder:text-slate-400">
             <span class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
                 <i data-lucide="search" class="w-4 h-4"></i>
             </span>
+        </div>
+
+        <!-- Selector de Sucursal (Filtro) -->
+        <div class="mt-4 px-1">
+            <div class="relative">
+                <select id="branchSelect"
+                    class="w-full appearance-none bg-slate-50 border border-slate-100 text-slate-700 text-[10px] font-black uppercase tracking-widest px-10 py-3 rounded-2xl focus:ring-2 focus:ring-blue-500/10 outline-none transition-all cursor-pointer">
+                    <option value="all">📍 Todos los locales</option>
+                </select>
+                <div class="absolute left-4 top-1/2 -translate-y-1/2 text-blue-600">
+                    <i data-lucide="map-pin" class="w-4 h-4"></i>
+                </div>
+                <div class="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
+                    <i data-lucide="chevron-down" class="w-4 h-4"></i>
+                </div>
+            </div>
         </div>
     </header>
 
@@ -84,10 +114,13 @@
 
     <!-- Modal Base (Bottom Sheet) -->
     <div id="modalBackdrop" class="backdrop fixed inset-0 bg-slate-900/40 z-50 backdrop-blur-sm"></div>
-    <div id="vehicleModal" class="bottom-sheet fixed inset-x-0 bottom-0 z-[60] bg-white rounded-t-[2.5rem] shadow-[0_-10px_40px_rgba(0,0,0,0.1)] overflow-hidden flex flex-col max-h-[95vh]">
+    <div id="vehicleModal"
+        class="bottom-sheet fixed inset-x-0 bottom-0 z-[60] bg-white rounded-t-[2.5rem] shadow-[0_-10px_40px_rgba(0,0,0,0.1)] overflow-hidden flex flex-col max-h-[95vh]">
         <!-- Handler para deslizar hacia abajo -->
-        <div class="shrink-0 pt-4 pb-2 px-6 flex justify-between items-center border-b border-slate-50 bg-white shadow-sm">
-            <div id="closeModalBtn" class="p-2 -ml-2 rounded-full hover:bg-slate-50 text-slate-400 cursor-pointer transition-colors">
+        <div
+            class="shrink-0 pt-4 pb-2 px-6 flex justify-between items-center border-b border-slate-50 bg-white shadow-sm">
+            <div id="closeModalBtn"
+                class="p-2 -ml-2 rounded-full hover:bg-slate-50 text-slate-400 cursor-pointer transition-colors">
                 <i data-lucide="chevron-down" class="w-6 h-6"></i>
             </div>
             <span class="text-[10px] font-black uppercase text-slate-400 tracking-widest">Detalle</span>
@@ -100,60 +133,20 @@
         </div>
     </div>
 
-    <!-- Footer (Solo al final del scroll) -->
-    <footer class="bg-white border-t border-slate-100 pt-10 pb-6 px-4">
-        <div class="max-w-xl mx-auto space-y-8">
-            <!-- Info de Contacto -->
-            <div class="space-y-4">
-                <div class="flex items-center gap-4 group">
-                    <div class="w-10 h-10 rounded-2xl bg-blue-50 flex items-center justify-center text-blue-600 transition-colors">
-                        <i data-lucide="map-pin" class="w-5 h-5"></i>
-                    </div>
-                    <div>
-                        <p class="text-[10px] font-black uppercase text-slate-400 tracking-widest leading-none mb-1">Dirección</p>
-                        <p class="text-sm font-bold text-slate-700">Avda. Alas Paraguayas Nº 1234</p>
-                    </div>
-                </div>
+    <!-- Footer Dinámico -->
+    <footer class="bg-white border-t border-slate-100 pt-12 pb-10 px-6">
+        <div id="footerBranchesContainer" class="max-w-xl mx-auto space-y-12">
+            <!-- Las sucursales se inyectarán dinámicamente aquí -->
+        </div>
 
-                <a href="https://wa.me/595981123123" target="_blank" class="flex items-center gap-4 group">
-                    <div class="w-10 h-10 rounded-2xl bg-green-50 flex items-center justify-center text-green-600 transition-colors group-hover:bg-green-100">
-                        <img src="./img/whatsapp.svg" class="w-6 h-6" alt="WA">
-                    </div>
-                    <div>
-                        <p class="text-[10px] font-black uppercase text-slate-400 tracking-widest leading-none mb-1">Contacto</p>
-                        <p class="text-sm font-bold text-slate-700">+595981123123</p>
-                    </div>
-                </a>
-
-                <div class="flex items-center gap-4 group">
-                    <div class="w-10 h-10 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-500 transition-colors">
-                        <i data-lucide="clock" class="w-5 h-5"></i>
-                    </div>
-                    <div>
-                        <p class="text-[10px] font-black uppercase text-slate-400 tracking-widest leading-none mb-1">Horarios de atención</p>
-                        <p class="text-sm font-bold text-slate-700 uppercase">Lun a Sáb de 7AM a 6PM</p>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Mapa (Placeholder Estético) -->
-            <div class="w-full h-48 rounded-[2.5rem] overflow-hidden border border-slate-100 shadow-sm relative group cursor-pointer">
-                <iframe src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3606.848834994244!2d-57.58782972505505!3d-25.309268827599054!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x945da9001b9134bf%3A0xf639a04a5840df5f!2sAsunci%C3%B3n!5e0!3m2!1ses!2spy!4v1710892543981!5m2!1ses!2spy" 
-                        class="w-full h-full border-0 grayscale opacity-80 group-hover:grayscale-0 group-hover:opacity-100 transition-all" 
-                        allowfullscreen="" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
-                <div class="absolute inset-0 pointer-events-none flex items-center justify-center bg-black/5 group-hover:bg-transparent transition-colors">
-                    <span class="bg-white/90 backdrop-blur-sm px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg border border-white/50">Abrir Mapa</span>
-                </div>
-            </div>
-
-            <!-- Créditos -->
-            <div class="pt-8 border-t border-slate-50 text-center">
-                <p class="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em]">Desarrollado por <span class="text-slate-900 border-b-2 border-blue-600 pb-0.5">Escalable 2026</span></p>
-            </div>
+        <div class="max-w-xl mx-auto pt-10 mt-10 border-t border-slate-50 text-center">
+            <p class="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em]">Desarrollado por <span
+                    class="text-slate-900 border-b-2 border-blue-600 pb-0.5">ESCALABLE</span></p>
         </div>
     </footer>
 
     <!-- Script Principal -->
     <script type="module" src="./js/public/catalogUI.js"></script>
 </body>
+
 </html>

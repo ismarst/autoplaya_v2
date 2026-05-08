@@ -84,7 +84,10 @@ async function init() {
 
         // Marca Blanca: Actualizar Logo en Sidebar
         const sidebarLogo = document.getElementById('app-logo');
-        if (sidebarLogo && currentPlaya.logo_url) sidebarLogo.src = currentPlaya.logo_url;
+        if (sidebarLogo && currentPlaya.logo_url) {
+            sidebarLogo.src = currentPlaya.logo_url;
+            sidebarLogo.classList.remove('opacity-0');
+        }
 
         // 1. Obtener Sesión (El Auth Guard del index.html ya verificó que existe)
         const { data: { session } } = await supabase.auth.getSession();
@@ -863,34 +866,33 @@ async function init() {
             const locals = await inventoryService.getLocals();
             adminUI.renderLocalsTable(
                 locals,
-                async (localToEdit) => {
-                    const data = await adminUI.renderLocalModal(localToEdit);
-                    await inventoryService.updateLocal(localToEdit.id, data);
-                    notifier.showToast('Local actualizado');
-                    loadConfigModule();
-                    loadLocals();
-                },
-                async (id) => {
-                    if (await notifier.confirm('Eliminar Local', '¿Seguro que deseas eliminar este local?')) {
-                        await inventoryService.deleteLocal(id);
-                        notifier.showToast('Local eliminado');
+                async (id, data) => {
+                    // id es null cuando es un nuevo local
+                    try {
+                        if (id) {
+                            await inventoryService.updateLocal(id, data);
+                            notifier.showToast('Cambios guardados en la sucursal');
+                        } else {
+                            await inventoryService.saveLocal({ ...data, playa_id: perfil.playa_id });
+                            notifier.showToast('Nueva sucursal registrada con éxito');
+                        }
                         loadConfigModule();
                         loadLocals();
+                    } catch (err) {
+                        notifier.showToast('Error al guardar local: ' + err.message, 'error');
+                    }
+                },
+                async (id) => {
+                    try {
+                        await inventoryService.deleteLocal(id);
+                        notifier.showToast('Sucursal eliminada');
+                        loadConfigModule();
+                        loadLocals();
+                    } catch (err) {
+                        notifier.showToast('Error al eliminar: ' + err.message, 'error');
                     }
                 }
             );
-
-            // Sobrescribir el botón de nuevo local dentro del renderLocalsTable
-            const btnNew = document.getElementById('btnNewLocal');
-            if (btnNew) {
-                btnNew.onclick = async () => {
-                    const data = await adminUI.renderLocalModal();
-                    await inventoryService.saveLocal({ ...data, playa_id: perfil.playa_id });
-                    notifier.showToast('Local creado exitosamente');
-                    loadConfigModule();
-                    loadLocals();
-                };
-            }
         };
 
         // 10. Handlers y Eventos de Clic en Tarjeta

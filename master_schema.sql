@@ -111,6 +111,10 @@ CREATE TABLE IF NOT EXISTS public.locales (
     playa_id UUID REFERENCES public.playas(id) NOT NULL,
     nombre TEXT NOT NULL,
     ciudad TEXT NOT NULL,
+    direccion TEXT,
+    telefono TEXT,
+    horario TEXT,
+    maps_url TEXT,
     created_at TIMESTAMPTZ DEFAULT now(),
     deleted_at TIMESTAMPTZ
 );

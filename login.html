@@ -50,7 +50,7 @@
         class="bg-white/5 backdrop-blur-2xl p-10 rounded-[3rem] shadow-2xl w-full max-w-md border border-white/10 relative z-10">
         <div class="text-center mb-10">
             <div class="mb-6 -mx-10 bg-white py-6 flex justify-center items-center shadow-sm">
-                <img id="app-logo" src="./img/logo.png" class="h-16 w-auto object-contain" alt="Logo">
+                <img id="app-logo" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" class="h-16 w-auto object-contain opacity-0 transition-opacity duration-300" alt="Logo">
             </div>
             <h1 class="text-2xl font-black text-white tracking-tight uppercase">Acceso a la <span
                     class="text-blue-500">Solución</span></h1>
@@ -155,7 +155,10 @@
             if (titleEl) titleEl.textContent = config.nombre_comercial;
 
             const logoEl = document.getElementById('app-logo');
-            if (logoEl && config.logo_url) logoEl.src = config.logo_url;
+            if (logoEl && config.logo_url) {
+                logoEl.src = config.logo_url;
+                logoEl.classList.remove('opacity-0');
+            }
 
             const { data: { session } } = await supabase.auth.getSession();
             if (session) window.location.href = 'index.html';
