@@ -41,13 +41,14 @@ export const reportsService = {
         if (paymentsError) throw paymentsError;
         const totalCollectedToday = paymentsToday.reduce((acc, p) => acc + Number(p.monto), 0);
 
-        // 4. Mora Activa (Cuotas pendientes vencidas)
+        // 4. Mora Activa (Cualquier cuota NO PAGADA cuya fecha sea anterior a HOY)
+        const todayStr = new Date().toISOString().split('T')[0];
         const { count: overdueCount, error: overdueError } = await supabase
             .from('cuotas')
             .select('*', { count: 'exact', head: true })
             .eq('playa_id', playaId)
-            .eq('estado', 'pendiente')
-            .lt('fecha_vencimiento', today.toISOString().split('T')[0]);
+            .neq('estado', 'pagado')
+            .lt('fecha_vencimiento', todayStr);
 
         if (overdueError) throw overdueError;
 
@@ -59,41 +60,87 @@ export const reportsService = {
         };
     },
 
-    /**
-     * Obtiene listados rápidos para el dashboard
-     */
     async getDashboardLists(playaId) {
-        // Últimos 5 vehículos
-        const { data: latestVehicles, error: vError } = await supabase
-            .from('vehiculos')
-            .select('*')
-            .eq('playa_id', playaId)
-            .order('created_at', { ascending: false })
-            .limit(5);
+        try {
+            const todayStr = new Date().toISOString().split('T')[0];
 
-        if (vError) throw vError;
+            // 1. Últimos 5 vehículos ingresados
+            const { data: latestVehicles, error: vError } = await supabase
+                .from('vehiculos')
+                .select('*')
+                .eq('playa_id', playaId)
+                .is('deleted_at', null)
+                .order('created_at', { ascending: false })
+                .limit(5);
 
-        // Próximos 5 vencimientos (incluyendo info de vehículo)
-        const { data: nextExpirations, error: eError } = await supabase
-            .from('cuotas')
-            .select(`
-                *,
-                ventas(
-                    clientes(id, nombre, nro_documento),
-                    vehiculos(marca, modelo, nro_stock, anho)
-                )
-            `)
-            .eq('playa_id', playaId)
-            .eq('estado', 'pendiente')
-            .gte('fecha_vencimiento', new Date().toISOString().split('T')[0])
-            .order('fecha_vencimiento', { ascending: true })
-            .limit(5);
+            if (vError) throw vError;
 
-        if (eError) throw eError;
+            // 2. PRÓXIMOS VENCIMIENTOS
+            // Sincronizado con collectionsService: Traemos todas las cuotas de ventas activas
+            const { data: rawData, error: eError } = await supabase
+                .from('cuotas')
+                .select(`
+                    *,
+                    ventas!inner(
+                        id,
+                        estado,
+                        clientes(id, nombre, nro_documento),
+                        vehiculos(marca, modelo, nro_stock, anho)
+                    )
+                `)
+                .eq('playa_id', playaId)
+                .neq('ventas.estado', 'anulada');
 
-        return {
-            latestVehicles,
-            nextExpirations
-        };
+            if (eError) throw eError;
+
+            // Filtro Seguro en JS (Evita la trampa de los NULL de Postgres)
+            const allUnpaid = rawData.filter(c => c.estado !== 'pagado');
+
+            // --- PROCESAMIENTO CENTRADO EN EL CLIENTE ---
+
+            // A) Identificar CLIENTES que tienen DEUDA VENCIDA (Mora en CUALQUIER vehículo)
+            const clientsWithArrears = new Set();
+            allUnpaid.forEach(c => {
+                if (c.fecha_vencimiento < todayStr && c.ventas && c.ventas.clientes) {
+                    clientsWithArrears.add(c.ventas.clientes.id);
+                }
+            });
+
+            // B) Filtrar vencimientos FUTUROS de CLIENTES que NO tengan mora
+            const upcomingCandidates = allUnpaid.filter(c => {
+                const isFutureOrToday = c.fecha_vencimiento >= todayStr;
+                const clientId = c.ventas?.clientes?.id;
+                const isClean = clientId && !clientsWithArrears.has(clientId);
+                return isFutureOrToday && isClean;
+            });
+
+            // C) ORDENAMIENTO MANUAL POR FECHA (Garantiza prioridad de inminentes sobre refuerzos)
+            upcomingCandidates.sort((a, b) => {
+                if (a.fecha_vencimiento < b.fecha_vencimiento) return -1;
+                if (a.fecha_vencimiento > b.fecha_vencimiento) return 1;
+                return 0;
+            });
+
+            // D) Agrupar por CLIENTE: Solo la PRÓXIMA cuota global del cliente
+            const finalExpirations = [];
+            const processedClients = new Set();
+
+            for (const item of upcomingCandidates) {
+                const clientId = item.ventas?.clientes?.id;
+                if (clientId && !processedClients.has(clientId)) {
+                    finalExpirations.push(item);
+                    processedClients.add(clientId);
+                }
+                if (finalExpirations.length >= 5) break;
+            }
+
+            return {
+                latestVehicles: latestVehicles || [],
+                nextExpirations: finalExpirations
+            };
+        } catch (error) {
+            console.error('Error en getDashboardLists:', error.message);
+            throw error;
+        }
     }
 };

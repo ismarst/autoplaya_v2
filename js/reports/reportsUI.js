@@ -1,4 +1,4 @@
-import { reportsService } from './reportsService.js';
+import { reportsService } from './reportsService.js?v=3';
 import { formatDate } from '../utils/dateFormatter.js';
 
 export const reportsUI = {
@@ -28,7 +28,13 @@ export const reportsUI = {
                         ${this._renderStatCard('STOCK ACTIVO', this._formatMoney(stats.activeStockValue), 'layout-grid', 'bg-blue-50 text-blue-600')}
                         ${this._renderStatCard('VENTAS DEL MES', stats.salesCount, 'briefcase', 'bg-emerald-50 text-emerald-600')}
                         ${this._renderStatCard('RECAUDACIÓN HOY', this._formatMoney(stats.totalCollectedToday), 'wallet', 'bg-indigo-50 text-indigo-600')}
-                        ${this._renderStatCard('MORA ACTIVA', stats.overdueCount, 'alert-triangle', 'bg-rose-50 text-rose-600')}
+                        ${this._renderStatCard(
+                            'MORA ACTIVA', 
+                            stats.overdueCount, 
+                            'alert-triangle', 
+                            stats.overdueCount > 0 ? 'bg-rose-50 text-rose-600' : 'bg-emerald-50 text-emerald-600', 
+                            'window.navToCollections()'
+                        )}
                     </div>
 
                     <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -102,7 +108,7 @@ export const reportsUI = {
                                                     <div class="flex flex-col">
                                                         <span class="text-slate-600 font-bold">${formatDate(e.fecha_vencimiento)}</span>
                                                         <span class="text-[9px] ${new Date(e.fecha_vencimiento) < new Date() ? 'text-rose-500' : 'text-slate-400'} font-black uppercase">
-                                                            ${new Date(e.fecha_vencimiento).toDateString() === new Date().toDateString() ? 'Vence Hoy' : ''}
+                                                            ${e.es_refuerzo ? 'REFUERZO' : `CUOTA ${e.nro_cuota}`} ${new Date(e.fecha_vencimiento).toDateString() === new Date().toDateString() ? '- VENCE HOY' : ''}
                                                         </span>
                                                     </div>
                                                 </td>
@@ -133,9 +139,12 @@ export const reportsUI = {
         }
     },
 
-    _renderStatCard(title, value, icon, colors) {
+    _renderStatCard(title, value, icon, colors, onclick = null) {
+        const cursor = onclick ? 'cursor-pointer active:scale-95' : '';
+        const clickEvent = onclick ? `onclick="${onclick}"` : '';
+
         return `
-            <div class="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-xl shadow-slate-200/50 hover:scale-[1.02] transition-all group overflow-hidden relative">
+            <div ${clickEvent} class="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-xl shadow-slate-200/50 hover:scale-[1.02] transition-all group overflow-hidden relative ${cursor}">
                 <div class="flex justify-between items-start mb-4 relative z-10">
                     <div class="w-12 h-12 ${colors} rounded-2xl flex items-center justify-center shadow-inner group-hover:rotate-12 transition-transform">
                         <i data-lucide="${icon}" class="w-6 h-6" stroke-width="1.5"></i>

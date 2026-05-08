@@ -164,6 +164,15 @@ async function init() {
             const isHistory = section === 'history';
             const isConfig = section === 'config';
 
+            // VALIDACIÓN: Obligatorio tener al menos 1 LOCAL para Inventario o Clientes
+            if (isInventory || isClients) {
+                const locals = await inventoryService.getLocals();
+                if (!locals || locals.length === 0) {
+                    notifier.showToast('⚠️ POR FAVOR, PRIMERO VAYA A CONFIGURACIÓN -> GESTIÓN DEL LOCAL Y AÑADA MÍNIMO 1 LOCAL.', 'error');
+                    return showSection('config'); // Redirección forzada
+                }
+            }
+
             // 3. Limpiar Contenedor Principal con Loader
             const mainContent = document.getElementById('mainContent');
             mainContent.innerHTML = `
