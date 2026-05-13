@@ -41,16 +41,30 @@ export const reportsService = {
         if (paymentsError) throw paymentsError;
         const totalCollectedToday = paymentsToday.reduce((acc, p) => acc + Number(p.monto), 0);
 
-        // 4. Mora Activa (Cualquier cuota NO PAGADA cuya fecha sea anterior a HOY)
-        const todayStr = new Date().toISOString().split('T')[0];
-        const { count: overdueCount, error: overdueError } = await supabase
+        // 4. Mora Activa (Contar CLIENTES únicos con deuda vencida, sincronizado con la lógica visual)
+        const dStats = new Date();
+        const t = new Date(); t.setDate(dStats.getDate() + 1);
+        const tomorrowStr = `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`;
+
+        const { data: overdueData, error: overdueError } = await supabase
             .from('cuotas')
-            .select('*', { count: 'exact', head: true })
+            .select('venta_id, ventas!inner(cliente_id)')
             .eq('playa_id', playaId)
             .neq('estado', 'pagado')
-            .lt('fecha_vencimiento', todayStr);
+            .lt('fecha_vencimiento', tomorrowStr);
 
         if (overdueError) throw overdueError;
+
+        // Contar IDs de clientes únicos
+        const uniqueOverdueClients = new Set();
+        if (overdueData) {
+            overdueData.forEach(c => {
+                if (c.ventas && c.ventas.cliente_id) {
+                    uniqueOverdueClients.add(c.ventas.cliente_id);
+                }
+            });
+        }
+        const overdueCount = uniqueOverdueClients.size;
 
         return {
             activeStockValue,
@@ -62,8 +76,6 @@ export const reportsService = {
 
     async getDashboardLists(playaId) {
         try {
-            const todayStr = new Date().toISOString().split('T')[0];
-
             // 1. Últimos 5 vehículos ingresados
             const { data: latestVehicles, error: vError } = await supabase
                 .from('vehiculos')
@@ -98,17 +110,26 @@ export const reportsService = {
 
             // --- PROCESAMIENTO CENTRADO EN EL CLIENTE ---
 
+            // --- PROCESAMIENTO CENTRADO EN EL CLIENTE (Lógica Robusta de Fechas) ---
+            const today = new Date(); today.setHours(0, 0, 0, 0);
+
             // A) Identificar CLIENTES que tienen DEUDA VENCIDA (Mora en CUALQUIER vehículo)
             const clientsWithArrears = new Set();
             allUnpaid.forEach(c => {
-                if (c.fecha_vencimiento < todayStr && c.ventas && c.ventas.clientes) {
+                const dueDate = new Date(c.fecha_vencimiento);
+                dueDate.setHours(0, 0, 0, 0);
+
+                if (dueDate < today && c.ventas && c.ventas.clientes) {
                     clientsWithArrears.add(c.ventas.clientes.id);
                 }
             });
 
             // B) Filtrar vencimientos FUTUROS de CLIENTES que NO tengan mora
             const upcomingCandidates = allUnpaid.filter(c => {
-                const isFutureOrToday = c.fecha_vencimiento >= todayStr;
+                const dueDate = new Date(c.fecha_vencimiento);
+                dueDate.setHours(0, 0, 0, 0);
+
+                const isFutureOrToday = dueDate >= today;
                 const clientId = c.ventas?.clientes?.id;
                 const isClean = clientId && !clientsWithArrears.has(clientId);
                 return isFutureOrToday && isClean;

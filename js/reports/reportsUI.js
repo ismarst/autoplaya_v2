@@ -1,4 +1,4 @@
-import { reportsService } from './reportsService.js?v=3';
+import { reportsService } from './reportsService.js?v=4';
 import { formatDate } from '../utils/dateFormatter.js';
 
 export const reportsUI = {
@@ -96,7 +96,32 @@ export const reportsUI = {
                                     <tbody class="divide-y divide-slate-50 text-xs font-bold text-slate-600">
                                         ${lists.nextExpirations.length === 0 ? `
                                             <tr><td colspan="3" class="px-6 py-10 text-center text-slate-400 uppercase text-[10px] font-black">No hay vencimientos próximos</td></tr>
-                                        ` : lists.nextExpirations.map(e => `
+                                        ` : lists.nextExpirations.map(e => {
+                                            // Lógica sincronizada con formatDate (usando el mismo desfase de Date)
+                                            const d = new Date();
+                                            const todayStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+                                            
+                                            const t = new Date(); t.setDate(d.getDate() + 1);
+                                            const tomorrowStr = `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`;
+
+                                            const qDate = new Date(e.fecha_vencimiento);
+                                            const quotaStr = `${qDate.getFullYear()}-${String(qDate.getMonth() + 1).padStart(2, '0')}-${String(qDate.getDate()).padStart(2, '0')}`;
+
+                                            let colorClass = 'text-slate-400';
+                                            let labelText = e.es_refuerzo ? 'REFUERZO' : `CUOTA ${e.nro_cuota}`;
+
+                                            if (quotaStr < todayStr) {
+                                                colorClass = 'text-rose-500';
+                                                labelText += ' - VENCIDO';
+                                            } else if (quotaStr === todayStr) {
+                                                colorClass = 'text-amber-600';
+                                                labelText += ' - VENCE HOY';
+                                            } else if (quotaStr === tomorrowStr) {
+                                                colorClass = 'text-amber-600';
+                                                labelText += ' - VENCE MAÑANA';
+                                            }
+
+                                            return `
                                             <tr class="hover:bg-slate-50/50 transition cursor-pointer group" onclick="window.navToCollections('${e.ventas.clientes.id}')">
                                                 <td class="px-6 py-4">
                                                     <div class="flex flex-col">
@@ -107,14 +132,15 @@ export const reportsUI = {
                                                 <td class="px-6 py-4">
                                                     <div class="flex flex-col">
                                                         <span class="text-slate-600 font-bold">${formatDate(e.fecha_vencimiento)}</span>
-                                                        <span class="text-[9px] ${new Date(e.fecha_vencimiento) < new Date() ? 'text-rose-500' : 'text-slate-400'} font-black uppercase">
-                                                            ${e.es_refuerzo ? 'REFUERZO' : `CUOTA ${e.nro_cuota}`} ${new Date(e.fecha_vencimiento).toDateString() === new Date().toDateString() ? '- VENCE HOY' : ''}
+                                                        <span class="text-[9px] ${colorClass} font-black uppercase">
+                                                            ${labelText}
                                                         </span>
                                                     </div>
                                                 </td>
                                                 <td class="px-6 py-4 font-black text-slate-900">${this._formatMoney(e.monto)}</td>
                                             </tr>
-                                        `).join('')}
+                                            `;
+                                        }).join('')}
                                     </tbody>
                                 </table>
                             </div>
