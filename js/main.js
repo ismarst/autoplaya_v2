@@ -339,6 +339,202 @@ async function init() {
             clientUI.renderClientGrid(clients, (client) => {
                 const { form, btnDelete, closeModal } = clientUI.renderClientModal(client);
 
+                // Cargar compras del cliente
+                const purchasesContainer = document.getElementById('clientPurchasesContainer');
+                if (purchasesContainer) {
+                    clientService.getClientPurchases(client.id).then(purchases => {
+                        if (purchases.length === 0) {
+                            purchasesContainer.innerHTML = '<div class="py-10 text-center text-slate-400 font-bold uppercase text-xs tracking-widest">El cliente no registra adquisiciones previas</div>';
+                        } else {
+                            purchasesContainer.innerHTML = purchases.map(p => {
+                                const v = p.vehiculos;
+                                const date = new Date(p.fecha_venta).toLocaleDateString('es-PY');
+                                const total = new Intl.NumberFormat('es-PY', { style: 'currency', currency: 'PYG', maximumFractionDigits: 0 }).format(p.total_venta).replace('PYG', 'Gs.');
+                                return `
+                                    <div class="bg-white p-4 rounded-2xl border border-slate-100 flex justify-between items-center shadow-sm hover:shadow-md transition-shadow">
+                                        <div>
+                                            <button onclick="window.viewLeadVehicle('${v.id}')" class="text-left group/vtitle">
+                                                <p class="font-black text-slate-800 uppercase group-hover/vtitle:text-blue-600 transition-colors">${v.marca} ${v.modelo} - ${v.anho || '----'}</p>
+                                                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Fecha: ${date} • Stock: ${v.nro_stock ? v.nro_stock.toString().padStart(5, '0') : 'N/A'}</p>
+                                            </button>
+                                        </div>
+                                        <div class="text-right shrink-0 ml-4">
+                                            <p class="font-black text-emerald-600 text-sm">${total}</p>
+                                            <p class="text-[9px] font-bold uppercase text-slate-400 tracking-widest">Total Facturado</p>
+                                        </div>
+                                    </div>
+                                `;
+                            }).join('');
+                        }
+                    });
+                }
+
+                // Cargar Leads / Presupuestos
+                const leadsContainer = document.getElementById('clientLeadsContainer');
+                if (leadsContainer) {
+                    clientService.getClientBudgets(client.id).then(leads => {
+                        if (leads.length === 0) {
+                            leadsContainer.innerHTML = '<div class="py-10 text-center text-slate-400 font-bold uppercase text-xs tracking-widest">No hay presupuestos generados para este cliente</div>';
+                        } else {
+                            window._currentClientLeads = leads; // Para acceder desde botones
+                            window._currentClientName = client.nombre;
+                            
+                            leadsContainer.innerHTML = leads.map(lead => {
+                                const v = lead.vehiculos;
+                                const date = new Date(lead.fecha_presupuesto).toLocaleDateString('es-PY');
+                                const total = new Intl.NumberFormat('es-PY', { style: 'currency', currency: 'PYG', maximumFractionDigits: 0 }).format(lead.precio_negociado).replace('PYG', 'Gs.');
+                                
+                                const isSold = v.estado === 'vendido';
+                                const badgeClass = isSold ? 'bg-red-50 text-red-600 border-red-100' : 'bg-green-50 text-green-600 border-green-100';
+                                const badgeText = isSold ? 'Vehículo Vendido' : 'Disponible';
+                                
+                                return `
+                                    <div class="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow relative group">
+                                        <div class="flex justify-between items-start mb-4">
+                                            <div>
+                                                <button onclick="window.viewLeadVehicle('${lead.vehiculos.id}')" class="text-left group/title">
+                                                    <p class="font-black text-slate-800 uppercase text-lg leading-tight group-hover/title:text-blue-600 transition-colors">${v.marca} ${v.modelo} - ${v.anho || '----'}</p>
+                                                    <p class="text-[10px] font-bold text-blue-500 uppercase tracking-widest mt-0.5">STOCK: #${v.nro_stock ? v.nro_stock.toString().padStart(5, '0') : 'S/N'}</p>
+                                                </button>
+                                                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mt-2">Simulación: ${date} • Tipo: ${lead.tipo_venta}</p>
+                                            </div>
+                                            <div class="text-right">
+                                                <p class="font-black text-orange-500 text-lg">${total}</p>
+                                                <p class="text-[9px] font-bold uppercase text-slate-400 tracking-widest">Precio Negociado</p>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="flex items-center justify-between pt-4 border-t border-slate-50">
+                                            <span class="px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest border ${badgeClass}">
+                                                ${badgeText}
+                                            </span>
+                                            
+                                            <div class="flex gap-2">
+                                                <button onclick="window.regenerateLeadPDF('${lead.id}')" class="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl transition text-[10px] uppercase tracking-widest flex items-center gap-2">
+                                                    <i data-lucide="file-text" class="w-3.5 h-3.5"></i> PDF
+                                                </button>
+                                                ${!isSold ? `
+                                                <button onclick="window.continueLeadSale('${v.id}', '${client.id}')" class="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-black rounded-xl shadow-lg shadow-blue-600/20 transition active:scale-95 text-[10px] uppercase tracking-widest flex items-center gap-2">
+                                                    Continuar Venta <i data-lucide="arrow-right" class="w-3.5 h-3.5"></i>
+                                                </button>
+                                                ` : ''}
+                                            </div>
+                                        </div>
+                                    </div>
+                                `;
+                            }).join('');
+                            if (window.lucide) lucide.createIcons();
+                        }
+                    });
+                }
+
+                // Cargar Notas CRM
+                const notesContainer = document.getElementById('clientNotesContainer');
+                const btnAddNote = document.getElementById('btnAddCrmNote');
+                const noteInput = document.getElementById('crmNoteText');
+
+                const refreshNotes = async () => {
+                    const notes = await clientService.getClientNotes(client.id);
+                    if (notes.length === 0) {
+                        notesContainer.innerHTML = '<p class="text-center text-slate-400 text-[10px] font-bold uppercase py-10">Sin registros de seguimiento</p>';
+                    } else {
+                        notesContainer.innerHTML = notes.map(n => {
+                            const date = new Date(n.fecha_creacion).toLocaleString('es-PY');
+                            return `
+                                <div class="bg-slate-50 p-4 rounded-2xl border border-slate-100 relative group" data-note-id="${n.id}">
+                                    <div class="flex justify-between items-start mb-2">
+                                        <div class="flex flex-col">
+                                            <span class="text-[9px] font-black text-blue-600 uppercase tracking-widest">${n.autor_nombre}</span>
+                                            <span class="text-[9px] font-bold text-slate-400 uppercase">${date}</span>
+                                        </div>
+                                        <div class="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <button onclick="window.editNote('${n.id}', \`${n.comentario}\`)" class="p-1.5 hover:bg-blue-100 text-blue-600 rounded-lg transition" title="Editar">
+                                                <i data-lucide="pencil" class="w-3 h-3"></i>
+                                            </button>
+                                            <button onclick="window.deleteNote('${n.id}')" class="p-1.5 hover:bg-red-100 text-red-600 rounded-lg transition" title="Eliminar">
+                                                <i data-lucide="trash-2" class="w-3 h-3"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <p class="text-xs font-bold text-slate-700 uppercase leading-relaxed">${n.comentario}</p>
+                                </div>
+                            `;
+                        }).join('');
+                        if (window.lucide) lucide.createIcons();
+                    }
+                };
+                window.refreshNotes = refreshNotes;
+
+                // Funciones globales para acciones de notas
+                window.editNote = (id, currentText) => {
+                    const noteCard = document.querySelector(`[data-note-id="${id}"]`);
+                    if (!noteCard) return;
+
+                    noteCard.innerHTML = `
+                        <div class="space-y-3 p-1">
+                            <textarea id="editNoteInput_${id}" class="w-full px-4 py-3 bg-white border border-blue-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all font-bold text-xs uppercase resize-none h-20 shadow-inner">${currentText}</textarea>
+                            <div class="flex gap-2 justify-end">
+                                <button onclick="window.refreshNotes()" class="px-3 py-2 text-[9px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-600 transition">Cancelar</button>
+                                <button onclick="window.saveEditedNote('${id}')" class="px-4 py-2 bg-blue-600 text-white text-[9px] font-black uppercase tracking-widest rounded-lg shadow-lg shadow-blue-600/20 active:scale-95 transition">Guardar Cambios</button>
+                            </div>
+                        </div>
+                    `;
+                    document.getElementById(`editNoteInput_${id}`).focus();
+                };
+
+                window.saveEditedNote = async (id) => {
+                    const input = document.getElementById(`editNoteInput_${id}`);
+                    const newText = input.value.trim();
+                    
+                    if (!newText) return notifier.showToast('La nota no puede estar vacía', 'error');
+
+                    try {
+                        await clientService.updateClientNote(id, newText);
+                        notifier.showToast('Nota actualizada');
+                        refreshNotes();
+                    } catch (err) {
+                        notifier.showToast('Error al actualizar nota', 'error');
+                    }
+                };
+
+                window.deleteNote = async (id) => {
+                    if (await notifier.confirm('Eliminar Nota', '¿Seguro que deseas borrar este comentario?')) {
+                        try {
+                            await clientService.deleteClientNote(id);
+                            notifier.showToast('Nota eliminada');
+                            refreshNotes();
+                        } catch (err) {
+                            notifier.showToast('Error al eliminar nota', 'error');
+                        }
+                    }
+                };
+
+                if (notesContainer) {
+                    refreshNotes();
+                    btnAddNote.onclick = async () => {
+                        const text = noteInput.value.trim();
+                        if (!text) return notifier.showToast('Escriba un comentario', 'error');
+
+                        btnAddNote.disabled = true;
+                        try {
+                            await clientService.saveClientNote({
+                                playa_id: perfil.playa_id,
+                                cliente_id: client.id,
+                                autor_id: session.user.id,
+                                autor_nombre: perfil.nombre_completo || 'Usuario',
+                                comentario: text.toUpperCase()
+                            });
+                            noteInput.value = '';
+                            notifier.showToast('Nota guardada');
+                            refreshNotes();
+                        } catch (err) {
+                            notifier.showToast('Error al guardar nota', 'error');
+                        } finally {
+                            btnAddNote.disabled = false;
+                        }
+                    };
+                }
+
                 btnDelete.onclick = async () => {
                     if (await notifier.confirm('Eliminar', '¿Seguro que deseas eliminar este cliente?')) {
                         await clientService.deleteClient(client.id);
@@ -385,6 +581,92 @@ async function init() {
                     searchTimeout = setTimeout(loadClients, 300);
                 };
             }
+        };
+
+        // --- Helpers Globales para Leads (CRM) ---
+        window.regenerateLeadPDF = (leadId) => {
+            const lead = window._currentClientLeads?.find(l => l.id === leadId);
+            if (!lead) return notifier.showToast('Lead no encontrado', 'error');
+            
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            const v = lead.vehiculos;
+            
+            const entrega = Number(lead.entrega_inicial) || 0;
+            const precio = Number(lead.precio_negociado) || 0;
+            const plazo = Number(lead.cantidad_cuotas) || 0;
+            const saldo = precio - entrega;
+            const cuota = plazo > 0 ? saldo / plazo : 0;
+            
+            doc.setFontSize(22);
+            doc.setFont("helvetica", "bold");
+            doc.text("PRESUPUESTO AUTO", 105, 20, null, null, "center");
+            doc.setFontSize(12);
+            doc.setFont("helvetica", "normal");
+            doc.text(`Fecha (Simulación): ${new Date(lead.fecha_presupuesto).toLocaleDateString('es-PY')}`, 105, 30, null, null, "center");
+            
+            doc.autoTable({
+                startY: 40,
+                head: [['VEHÍCULO', 'CLIENTE']],
+                body: [[`${v.marca} ${v.modelo}\nStock: #${v.nro_stock || 'S/N'}`, window._currentClientName || 'Cliente']],
+                theme: 'grid',
+                headStyles: { fillColor: [30, 41, 59] }
+            });
+            
+            const formatMoney = (m) => new Intl.NumberFormat('es-PY').format(Math.round(m));
+            const planData = [
+                ['Tipo de Operación', lead.tipo_venta.toUpperCase()],
+                ['Precio Negociado', formatMoney(precio) + ' Gs.'],
+                ['Entrega Inicial', formatMoney(entrega) + ' Gs.'],
+                ['Saldo a Financiar', formatMoney(saldo) + ' Gs.'],
+                ['Plazo', `${plazo} Meses`],
+                ['CUOTA ESTIMADA', formatMoney(cuota) + ' Gs.']
+            ];
+            
+            doc.autoTable({
+                startY: doc.lastAutoTable.finalY + 10,
+                head: [['CONCEPTO', 'MONTO']],
+                body: planData,
+                theme: 'striped',
+                headStyles: { fillColor: [16, 185, 129] },
+                columnStyles: { 0: { fontStyle: 'bold' } }
+            });
+            
+            doc.save(`Presupuesto_CRM_${v.nro_stock || 'S/N'}.pdf`);
+            notifier.showToast('Presupuesto regenerado y descargado', 'success');
+        };
+
+        window.viewLeadVehicle = async (vehicleId) => {
+            try {
+                const vehicle = await inventoryService.getVehicleById(vehicleId);
+                if (vehicle) {
+                    inventoryUI.renderVehicleDetailModal(vehicle, null, null, true); // true = Read Only (4to parámetro)
+                }
+            } catch (err) {
+                notifier.showToast('No se pudo cargar el vehículo', 'error');
+            }
+        };
+
+        window.continueLeadSale = (vehicleId, clientId) => {
+            // Cerrar el modal del cliente
+            const modal = document.getElementById('modalClient');
+            if(modal) modal.remove();
+            
+            // Usar la función de navegación oficial del sistema
+            showSection('sales').then(() => {
+                // Esperar un momento a que el DOM de ventas se termine de renderizar
+                setTimeout(() => {
+                    const selVehicle = document.getElementById('saleVehicle');
+                    const selClient = document.getElementById('saleClient');
+                    if (selVehicle && selClient) {
+                        selVehicle.value = vehicleId;
+                        selClient.value = clientId;
+                        // Disparar evento para que se recalculen los precios y simulaciones
+                        selVehicle.dispatchEvent(new Event('change'));
+                        notifier.showToast('Lead recuperado. Listo para facturar.', 'success');
+                    }
+                }, 400);
+            });
         };
 
         // --- LÓGICA DE VENTAS ---
@@ -727,6 +1009,25 @@ async function init() {
                         ]),
                         theme: 'plain'
                     });
+                }
+
+                // GUARDAR LEAD EN EL CRM (Silencioso)
+                try {
+                    const sessionData = await supabase.auth.getSession();
+                    const userId = sessionData.data?.session?.user?.id;
+                    
+                    await supabase.from('presupuestos').insert([{
+                        playa_id: perfil.playa_id,
+                        cliente_id: optClient.value,
+                        vehiculo_id: optVehicle.value,
+                        tipo_venta: document.getElementById('tipo_venta').value,
+                        precio_negociado: precio,
+                        entrega_inicial: entrega,
+                        cantidad_cuotas: plazo,
+                        vendedor_id: userId
+                    }]);
+                } catch (err) {
+                    console.error('Aviso: No se pudo registrar el Lead en el CRM:', err);
                 }
 
                 // NO Guardar directo, pasar al modal de éxito

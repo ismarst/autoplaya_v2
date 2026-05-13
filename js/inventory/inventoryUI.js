@@ -228,7 +228,7 @@ export const inventoryUI = {
     /**
      * Renderiza la vista de detalle (visualizador) de un vehículo.
      */
-    renderVehicleDetailModal(vehicle, onEdit, onDelete) {
+    renderVehicleDetailModal(vehicle, onEdit, onDelete, isReadOnly = false) {
         let currentPhotoIndex = 0;
         const photos = vehicle.fotos && vehicle.fotos.length > 0 ? vehicle.fotos : ['https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?auto=format&fit=crop&q=80&w=800'];
 
@@ -243,7 +243,7 @@ export const inventoryUI = {
         const descripcion = security.esc(vehicle.descripcion);
 
         const modalHtml = `
-            <div id="modalDetail" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-in fade-in duration-300">
+            <div id="modalDetail" class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-in fade-in duration-300">
                 <div class="bg-gray-50 w-full max-w-2xl rounded-[2.5rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300 border border-white/20">
                     
                     <!-- Galería de Fotos -->
@@ -329,6 +329,7 @@ export const inventoryUI = {
                         ` : ''}
 
                         <!-- Acciones -->
+                        ${!isReadOnly ? `
                         <div class="flex flex-col sm:flex-row gap-4 pt-4 border-t border-gray-200">
                             <button id="btnDeleteDetail" class="px-6 py-4 bg-red-50 text-red-600 font-bold rounded-2xl hover:bg-red-100 transition-all active:scale-95 flex items-center gap-2">
                                 <i data-lucide="trash-2" class="w-4 h-4"></i> Borrar
@@ -342,6 +343,7 @@ export const inventoryUI = {
                                 </button>
                             ` : ''}
                         </div>
+                        ` : ''}
                     </div>
                 </div>
             </div>
@@ -385,13 +387,15 @@ export const inventoryUI = {
         modal.onclick = (e) => { if (e.target === modal) close(); };
 
         // Acciones
-        document.getElementById('btnEditDetail').onclick = () => {
-            close();
-            if (onEdit) onEdit(vehicle);
-        };
-        document.getElementById('btnDeleteDetail').onclick = () => {
-            if (onDelete) onDelete(vehicle);
-        };
+        if (!isReadOnly) {
+            document.getElementById('btnEditDetail').onclick = () => {
+                close();
+                if (onEdit) onEdit(vehicle);
+            };
+            document.getElementById('btnDeleteDetail').onclick = () => {
+                if (onDelete) onDelete(vehicle);
+            };
+        }
     },
 
     /**

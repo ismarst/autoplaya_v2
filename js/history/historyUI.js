@@ -1,6 +1,7 @@
 import { historyService } from './historyService.js';
 import { formatDate, formatDateTime } from '../utils/dateFormatter.js';
 import { security } from '../utils/security.js';
+import { inventoryUI } from '../inventory/inventoryUI.js';
 
 export const historyUI = {
     currentTab: 'sales', // 'sales' o 'cash'
@@ -159,6 +160,15 @@ export const historyUI = {
             window.print();
         };
 
+        window.viewHistoryVehicle = (ventaId) => {
+            if (!this._lastSalesData) return;
+            const sale = this._lastSalesData.find(v => v.id === ventaId);
+            if (sale && sale.vehiculos) {
+                inventoryUI.renderVehicleDetailModal(sale.vehiculos, null, null, true);
+                if (window.lucide) lucide.createIcons();
+            }
+        };
+
         this.renderFilters();
         this.loadData();
     },
@@ -288,6 +298,7 @@ export const historyUI = {
                     startDate,
                     endDate
                 });
+                this._lastSalesData = data;
 
                 thead.innerHTML = `
                     <tr>
@@ -318,8 +329,11 @@ export const historyUI = {
                                     </div>
                                 </td>
                                 <td class="px-6 py-4">
-                                    <div class="flex flex-col">
-                                        <span class="text-slate-900 font-black uppercase">${vMarca} ${vModelo} - ${v.vehiculos.anho || '----'}</span>
+                                    <div class="flex flex-col items-start">
+                                        <button onclick="window.viewHistoryVehicle('${v.id}')" class="text-slate-900 hover:text-blue-600 font-black uppercase text-left transition-colors flex items-center gap-1.5 group outline-none focus:ring-2 focus:ring-blue-500/20 rounded-md">
+                                            <span>${vMarca} ${vModelo} - ${v.vehiculos.anho || '----'}</span>
+                                            <i data-lucide="external-link" class="w-3.5 h-3.5 opacity-0 group-hover:opacity-100 text-blue-500 transition-opacity"></i>
+                                        </button>
                                         <span class="text-[9px] text-slate-400 font-mono text-xs">STOCK ${v.vehiculos.nro_stock ? v.vehiculos.nro_stock.toString().padStart(5, '0') : '-----'}</span>
                                     </div>
                                 </td>

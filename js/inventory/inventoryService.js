@@ -63,6 +63,28 @@ export const inventoryService = {
             throw error;
         }
     },
+ 
+    /**
+     * Obtiene un vehículo específico por su ID.
+     */
+    async getVehicleById(id) {
+        try {
+            const { data, error } = await supabase
+                .from('vehiculos')
+                .select(`
+                    *,
+                    locales (nombre)
+                `)
+                .eq('id', id)
+                .single();
+
+            if (error) throw error;
+            return data;
+        } catch (error) {
+            console.error('Error en getVehicleById:', error.message);
+            throw error;
+        }
+    },
 
     /**
      * Sube una foto al Storage organizado por playa_id.

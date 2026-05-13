@@ -10,7 +10,7 @@ export const historyService = {
             .select(`
                 *,
                 clientes(nombre, nro_documento),
-                vehiculos(marca, modelo, nro_stock, anho)
+                vehiculos(*)
             `)
             .eq('playa_id', playaId)
             .neq('estado', 'anulada')
