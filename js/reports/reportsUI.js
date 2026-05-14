@@ -1,4 +1,4 @@
-import { reportsService } from './reportsService.js?v=4';
+import { reportsService } from './reportsService.js?v=5';
 import { formatDate } from '../utils/dateFormatter.js';
 
 export const reportsUI = {
@@ -30,9 +30,9 @@ export const reportsUI = {
                         ${this._renderStatCard('RECAUDACIÓN HOY', this._formatMoney(stats.totalCollectedToday), 'wallet', 'bg-indigo-50 text-indigo-600')}
                         ${this._renderStatCard(
                             'MORA ACTIVA', 
-                            stats.overdueCount, 
+                            lists.overdueCount, 
                             'alert-triangle', 
-                            stats.overdueCount > 0 ? 'bg-rose-50 text-rose-600' : 'bg-emerald-50 text-emerald-600', 
+                            lists.overdueCount > 0 ? 'bg-rose-50 text-rose-600' : 'bg-emerald-50 text-emerald-600', 
                             'window.navToCollections()'
                         )}
                     </div>

@@ -153,6 +153,9 @@ export const collectionsUI = {
             } else if (status === 'today') {
                 statusColor = 'bg-amber-50 border-amber-100 text-amber-600 ring-1 ring-amber-200';
                 icon = 'bell';
+            } else if (status === 'tomorrow') {
+                statusColor = 'bg-amber-50 border-amber-100 text-amber-600 ring-1 ring-amber-200';
+                icon = 'bell';
             } else if (status === 'upcoming') {
                 statusColor = 'bg-blue-50 border-blue-100 text-blue-600';
                 icon = 'calendar';

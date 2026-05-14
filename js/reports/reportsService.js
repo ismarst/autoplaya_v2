@@ -41,36 +41,12 @@ export const reportsService = {
         if (paymentsError) throw paymentsError;
         const totalCollectedToday = paymentsToday.reduce((acc, p) => acc + Number(p.monto), 0);
 
-        // 4. Mora Activa (Contar CLIENTES únicos con deuda vencida, sincronizado con la lógica visual)
-        const dStats = new Date();
-        const t = new Date(); t.setDate(dStats.getDate() + 1);
-        const tomorrowStr = `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`;
-
-        const { data: overdueData, error: overdueError } = await supabase
-            .from('cuotas')
-            .select('venta_id, ventas!inner(cliente_id)')
-            .eq('playa_id', playaId)
-            .neq('estado', 'pagado')
-            .lt('fecha_vencimiento', tomorrowStr);
-
-        if (overdueError) throw overdueError;
-
-        // Contar IDs de clientes únicos
-        const uniqueOverdueClients = new Set();
-        if (overdueData) {
-            overdueData.forEach(c => {
-                if (c.ventas && c.ventas.cliente_id) {
-                    uniqueOverdueClients.add(c.ventas.cliente_id);
-                }
-            });
-        }
-        const overdueCount = uniqueOverdueClients.size;
-
+        // 4. Mora Activa: calculado en getDashboardLists con lógica consistente
+        // (se retorna desde lists.overdueCount para evitar duplicación de lógica)
         return {
             activeStockValue,
             salesCount: salesCount || 0,
-            totalCollectedToday,
-            overdueCount: overdueCount || 0
+            totalCollectedToday
         };
     },
 
@@ -108,28 +84,28 @@ export const reportsService = {
             // Filtro Seguro en JS (Evita la trampa de los NULL de Postgres)
             const allUnpaid = rawData.filter(c => c.estado !== 'pagado');
 
-            // --- PROCESAMIENTO CENTRADO EN EL CLIENTE ---
+            // --- PROCESAMIENTO CENTRADO EN EL CLIENTE (Lógica de strings, sin desfase de UTC) ---
+            const nowD = new Date();
+            const todayDashStr = `${nowD.getFullYear()}-${String(nowD.getMonth() + 1).padStart(2, '0')}-${String(nowD.getDate()).padStart(2, '0')}`;
 
-            // --- PROCESAMIENTO CENTRADO EN EL CLIENTE (Lógica Robusta de Fechas) ---
-            const today = new Date(); today.setHours(0, 0, 0, 0);
+            // Helper: extraer string visual de fecha de BD (mismo desfase que formatDate)
+            const toVisualStr = (fechaVenc) => {
+                const d = new Date(fechaVenc);
+                return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+            };
 
             // A) Identificar CLIENTES que tienen DEUDA VENCIDA (Mora en CUALQUIER vehículo)
+            // Solo días ANTERIORES a hoy son morosos (HOY no es moroso)
             const clientsWithArrears = new Set();
             allUnpaid.forEach(c => {
-                const dueDate = new Date(c.fecha_vencimiento);
-                dueDate.setHours(0, 0, 0, 0);
-
-                if (dueDate < today && c.ventas && c.ventas.clientes) {
+                if (toVisualStr(c.fecha_vencimiento) < todayDashStr && c.ventas && c.ventas.clientes) {
                     clientsWithArrears.add(c.ventas.clientes.id);
                 }
             });
 
             // B) Filtrar vencimientos FUTUROS de CLIENTES que NO tengan mora
             const upcomingCandidates = allUnpaid.filter(c => {
-                const dueDate = new Date(c.fecha_vencimiento);
-                dueDate.setHours(0, 0, 0, 0);
-
-                const isFutureOrToday = dueDate >= today;
+                const isFutureOrToday = toVisualStr(c.fecha_vencimiento) >= todayDashStr;
                 const clientId = c.ventas?.clientes?.id;
                 const isClean = clientId && !clientsWithArrears.has(clientId);
                 return isFutureOrToday && isClean;
@@ -157,7 +133,8 @@ export const reportsService = {
 
             return {
                 latestVehicles: latestVehicles || [],
-                nextExpirations: finalExpirations
+                nextExpirations: finalExpirations,
+                overdueCount: clientsWithArrears.size  // Fuente única de verdad para Mora Activa
             };
         } catch (error) {
             console.error('Error en getDashboardLists:', error.message);

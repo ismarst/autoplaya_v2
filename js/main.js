@@ -11,7 +11,7 @@ import { notifier } from './utils/notifier.js';
 import { formatDate } from './utils/dateFormatter.js';
 
 import { collectionsUI } from './collections/collectionsUI.js';
-import { reportsUI } from './reports/reportsUI.js';
+import { reportsUI } from './reports/reportsUI.js?v=5';
 import { historyUI } from './history/historyUI.js';
 import { CONFIG } from './config.js';
 import { tenantService } from './api/tenantService.js';

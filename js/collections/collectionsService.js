@@ -74,11 +74,20 @@ export const collectionsService = {
                     entry.nextQuota = c;
                     entry.vehicle = c.ventas.vehiculos;
 
-                    const today = new Date(); today.setHours(0, 0, 0, 0);
-                    const dueDate = new Date(c.fecha_vencimiento); dueDate.setHours(0, 0, 0, 0);
+                    // Comparación por string YYYY-MM-DD para evitar desfase de zona horaria (UTC vs PY)
+                    const now = new Date();
+                    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+                    const tom = new Date(); tom.setDate(now.getDate() + 1);
+                    const tomorrowStr = `${tom.getFullYear()}-${String(tom.getMonth() + 1).padStart(2, '0')}-${String(tom.getDate()).padStart(2, '0')}`;
 
-                    if (dueDate < today) entry.status = 'overdue';
-                    else if (dueDate.getTime() === today.getTime()) entry.status = 'today';
+                    // La fecha de la BD es YYYY-MM-DD pero JS con new Date() la parsea como UTC,
+                    // restando horas de la zona horaria local. Usamos el mismo objeto Date para
+                    // extraer el string visual que el usuario ve.
+                    const qDate = new Date(c.fecha_vencimiento);
+                    const quotaStr = `${qDate.getFullYear()}-${String(qDate.getMonth() + 1).padStart(2, '0')}-${String(qDate.getDate()).padStart(2, '0')}`;
+
+                    if (quotaStr <= todayStr) entry.status = 'overdue';
+                    else if (quotaStr === tomorrowStr) entry.status = 'tomorrow';
                     else entry.status = 'upcoming';
                 }
             }
@@ -86,7 +95,7 @@ export const collectionsService = {
 
         // 3. Convertir a Array y Ordenar por Prioridad
         return Array.from(clientsMap.values()).sort((a, b) => {
-            const priority = { 'overdue': 0, 'today': 1, 'upcoming': 2, 'paid': 3 };
+            const priority = { 'overdue': 0, 'tomorrow': 1, 'upcoming': 2, 'paid': 3 };
             if (priority[a.status] !== priority[b.status]) {
                 return priority[a.status] - priority[b.status];
             }
